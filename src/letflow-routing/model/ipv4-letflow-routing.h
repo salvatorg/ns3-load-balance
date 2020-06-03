@@ -2,6 +2,8 @@
 #ifndef IPV4_LETFLOW_ROUTING_H
 #define IPV4_LETFLOW_ROUTING_H
 
+#include "ns3/callback.h"
+#include "ns3/traced-value.h"
 #include "ns3/ipv4-routing-protocol.h"
 #include "ns3/ipv4-route.h"
 #include "ns3/object.h"
@@ -52,6 +54,12 @@ public:
   Ptr<Ipv4Route> ConstructIpv4Route (uint32_t port, Ipv4Address destAddress);
 
   void SetFlowletTimeout (Time timeout);
+
+
+	// salvatorg
+    TracedCallback <uint32_t> m_LetflowPathTrace;
+    typedef void (* LetflowPathCallback) (uint32_t queue_size);
+
 
 private:
   // Flowlet Timeout

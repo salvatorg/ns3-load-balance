@@ -208,7 +208,7 @@ def main(argv):
     flow_id_99 = small_flow_list[index_99].flowId
     flow_fct_99 = small_flow_list[index_99].fct
 
-    print "The FCT of 99% small flow: %i is: %i" % (flow_id_99, flow_fct_99)
+    print "The FCT of 99perc small flow: '%i' is: '%i'" % (flow_id_99, flow_fct_99)
 
 if __name__ == '__main__':
     main(sys.argv)

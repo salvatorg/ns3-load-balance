@@ -1149,6 +1149,9 @@ TcpSocketBase::DoConnect (void)
       {
           m_TLBSendSide = true;
       }
+	  // salvatorg
+	  // Mark the node which initiate the transaction
+	  // Making this node the BulkSender
       if (m_CloveEnabled)
       {
           m_CloveSendSide = true;
@@ -1611,9 +1614,10 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
                 " Segments acked: " << segsAcked <<
                 " bytes left: " << m_bytesAckedNotProcessed);
 
-  NS_LOG_DEBUG ("ACK of " << ackNumber <<
+  NS_LOG_DEBUG ("[TcpSocketBase::ReceivedAck] ACK of " << ackNumber <<
                 " SND.UNA=" << m_txBuffer->HeadSequence () <<
-                " SND.NXT=" << m_nextTxSequence);
+                " SND.NXT=" << m_nextTxSequence << " Bytes acked: " << bytesAcked << 
+				"\t" << Simulator::Now ());
 
   // XXX ECN Support, state goes into CA_CWR when receives ECE in TCP header
   if (m_tcb->m_ecnConn
@@ -1660,10 +1664,19 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
     bool found = packet->RemovePacketTag(tcpCloveTag);
     if (found)
     {
-        Ptr<Ipv4Clove> ipv4Clove = m_node->GetObject<Ipv4Clove> ();
+		// salvatorg
+        uint32_t flowId = TcpSocketBase::CalFlowId (m_endPoint->GetLocalAddress (), m_endPoint->GetPeerAddress (), m_endPoint->GetLocalPort (), m_endPoint->GetPeerPort ());
+       
+	    Ptr<Ipv4Clove> ipv4Clove = m_node->GetObject<Ipv4Clove> ();
         m_pathAcked = tcpCloveTag.GetPath ();
-        ipv4Clove->FlowRecv (m_pathAcked, m_endPoint->GetPeerAddress (), withECE);
+		int tmp = (bytesAcked!=0) ? ackNumber.GetValue()-bytesAcked : 0;
+        ipv4Clove->FlowRecv (m_pathAcked, m_endPoint->GetPeerAddress (), withECE, flowId, tmp);
+
+		// salvatorg
+		NS_LOG_DEBUG ("[TcpSocketBase::ReceivedAck] FlowID: " << flowId << " " << " SEQ Num: " << '-' << " ACK Num: " << ackNumber << " ECE: " << withECE << "\t" << Simulator::Now ());
+		NS_LOG_DEBUG ("[TcpSocketBase::ReceivedAck] FlowID: " << flowId << " bytesAcked " << bytesAcked << " ackNumber.GetValue()-bytesAcked " << ackNumber.GetValue()-bytesAcked);
     }
+
   }
 
   if (ackNumber == m_txBuffer->HeadSequence ()
@@ -2497,7 +2510,19 @@ TcpSocketBase::SendEmptyPacket (uint8_t flags)
   bool hasSyn = flags & TcpHeader::SYN;
   bool hasFin = flags & TcpHeader::FIN;
   bool isAck = (flags & ~(TcpHeader::ECE | TcpHeader::CWR)) == TcpHeader::ACK;
-  NS_LOG_DEBUG("Is ACK: " << isAck);
+
+	// salvatorg
+	uint32_t flow;
+	if ( m_CloveEnabled && m_CloveSendSide )
+		flow = TcpSocketBase::CalFlowId ( m_endPoint->GetLocalAddress (), m_endPoint->GetPeerAddress (), header.GetSourcePort (),
+ header.GetDestinationPort ());
+	else
+		flow = TcpSocketBase::CalFlowId ( m_endPoint->GetPeerAddress (), m_endPoint->GetLocalAddress (),
+ header.GetDestinationPort () ,header.GetSourcePort ());
+
+  NS_LOG_DEBUG("[TcpSocketBase::SendEmptyPacket], FlowID: "<< flow << " ackNum: " << m_rxBuffer->NextRxSequence () << " isAck: " << isAck << " " << Simulator::Now () );
+
+
   if (hasSyn)
     {
       if (m_synCount == 0)
@@ -2604,8 +2629,9 @@ TcpSocketBase::SendEmptyPacket (uint8_t flags)
                          m_endPoint->GetPeerAddress (), header.GetSourcePort (), header.GetDestinationPort ());
 
       Ptr<Ipv4Clove> ipv4Clove = m_node->GetObject<Ipv4Clove> ();
-      uint32_t path = ipv4Clove->GetPath (flowId, m_endPoint->GetLocalAddress (), m_endPoint->GetPeerAddress ());
-
+      uint32_t path = ipv4Clove->GetPath (flowId, m_endPoint->GetLocalAddress (), m_endPoint->GetPeerAddress (), 0, 0, 0);
+	  // salvatorg
+	  // m_path_ECNed_new = path;
       // XPath Support
       Ipv4XPathTag ipv4XPathTag;
       ipv4XPathTag.SetPathId (path);
@@ -2615,6 +2641,8 @@ TcpSocketBase::SendEmptyPacket (uint8_t flags)
       TcpCloveTag tcpCloveTag;
       tcpCloveTag.SetPath (path);
       p->AddPacketTag (tcpCloveTag);
+
+
     }
 
     if (m_piggybackCloveInfo)
@@ -2624,6 +2652,13 @@ TcpSocketBase::SendEmptyPacket (uint8_t flags)
       p->AddPacketTag (tcpCloveTag);
     }
   }
+
+  // salvatorg
+uint32_t flowId = TcpSocketBase::CalFlowId (m_endPoint->GetLocalAddress (),
+                         m_endPoint->GetPeerAddress (), header.GetSourcePort (), header.GetDestinationPort ());
+	uint32_t flowId2 = TcpSocketBase::CalFlowId (m_endPoint->GetPeerAddress (), m_endPoint->GetLocalAddress (),
+                                   header.GetDestinationPort () ,header.GetSourcePort ());
+  	// NS_LOG_UNCOND("[TcpSocketBase::SendEmptyPacket] FlowID: " << flowId << " " << flowId2 << " SEQ Num: " << header.GetSequenceNumber () << " ACK Num: " << header.GetAckNumber () << " Ack: " << isAck );
 
   m_txTrace (p, header, this);
 
@@ -2668,6 +2703,9 @@ TcpSocketBase::SendEmptyPacket (uint8_t flags)
 
       m_retxEvent = Simulator::Schedule (m_rto, &TcpSocketBase::SendEmptyPacket, this, flags);
     }
+  // salvatorg
+//   uint32_t flowId = TcpSocketBase::CalFlowId (m_endPoint->GetLocalAddress (), m_endPoint->GetPeerAddress (), header.GetSourcePort (), header.GetDestinationPort ());
+//   if(m_path_ECNed_old!=m_path_ECNed_new) NS_LOG_UNCOND ("Flow ECNed: [ " << flowId << " ] with old/new path " << m_path_ECNed_old << "->" << m_path_ECNed_new << "[SendEmptyPacket]");
 }
 
 /* This function closes the endpoint completely. Called upon RST_TX action. */
@@ -2843,7 +2881,6 @@ uint32_t
 TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool withAck)
 {
   NS_LOG_FUNCTION (this << seq << maxSize << withAck);
-
   bool isRetransmission = false;
   if (seq != m_highTxMark)
     {
@@ -3013,8 +3050,9 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
                                  m_endPoint->GetPeerAddress (), header.GetSourcePort (), header.GetDestinationPort ());
 
           Ptr<Ipv4Clove> ipv4Clove = m_node->GetObject<Ipv4Clove> ();
-          uint32_t path = ipv4Clove->GetPath (flowId, m_endPoint->GetLocalAddress (), m_endPoint->GetPeerAddress ());
-
+          uint32_t path = ipv4Clove->GetPath (flowId, m_endPoint->GetLocalAddress (), m_endPoint->GetPeerAddress (), header.GetSequenceNumber().GetValue(), remainingData, AvailableWindow());
+	  	  // salvatorg
+	  	  //m_path_ECNed_new = path;
           // XPath Support
           Ipv4XPathTag ipv4XPathTag;
           ipv4XPathTag.SetPathId (path);
@@ -3024,8 +3062,17 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
           TcpCloveTag tcpCloveTag;
           tcpCloveTag.SetPath (path);
           p->AddPacketTag (tcpCloveTag);
+
+  // salvatorg
+	//uint32_t flowId = TcpSocketBase::CalFlowId (m_endPoint->GetLocalAddress (),m_endPoint->GetPeerAddress (), header.GetSourcePort (), header.GetDestinationPort ());
+	// uint32_t flowId2 = TcpSocketBase::CalFlowId (m_endPoint->GetPeerAddress (), m_endPoint->GetLocalAddress (),
+    //                                header.GetDestinationPort () ,header.GetSourcePort ());
+	// NS_LOG_UNCOND ("[TcpSocketBase::SendDataPacket] FlowID: " << flowId << " " << " SEQ Num: " << header.GetSequenceNumber () << " ACK Num: " << header.GetAckNumber ()<< "\t" << Simulator::Now ());
+
         }
       }
+
+
 
 
       if (m_isPause)
@@ -3059,6 +3106,8 @@ TcpSocketBase::SendDataPacket (SequenceNumber32 seq, uint32_t maxSize, bool with
     {
       Simulator::ScheduleNow (&TcpSocketBase::NotifyDataSent, this, (seq + sz - m_highTxMark.Get ()));
     }
+
+
   // Update highTxMark
   m_highTxMark = std::max (seq + sz, m_highTxMark.Get ());
   return sz;
@@ -3233,7 +3282,7 @@ void
 TcpSocketBase::ReceivedData (Ptr<Packet> p, const TcpHeader& tcpHeader)
 {
   NS_LOG_FUNCTION (this << tcpHeader);
-  NS_LOG_DEBUG ("Data segment, seq=" << tcpHeader.GetSequenceNumber () <<
+  NS_LOG_DEBUG ("[TcpSocketBase::ReceivedData] Data segment, seq=" << tcpHeader.GetSequenceNumber () <<
                 " pkt size=" << p->GetSize () );
 
   uint8_t sendflags = TcpHeader::ACK;
@@ -4146,6 +4195,10 @@ TcpSocketBase::CalFlowId (const Ipv4Address &saddr, const Ipv4Address &daddr,
   std::stringstream hash_string;
   hash_string << daddr.Get ();
   hash_string << dport;
+
+  // salvatorg
+  hash_string << saddr.Get ();
+  hash_string << sport; 
 
   return Hash32 (hash_string.str ());
 }

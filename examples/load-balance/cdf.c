@@ -4,7 +4,7 @@
 void init_cdf(struct cdf_table *table)
 {
     if(!table)
-        return;
+        perror("Error: table pointer is empty");//return;
 
     table->entries = (struct cdf_entry*)malloc(TG_CDF_TABLE_ENTRY * sizeof(struct cdf_entry));
     table->num_entry = 0;
@@ -32,7 +32,7 @@ void load_cdf(struct cdf_table *table, const char *file_name)
     int i = 0;
 
     if (!table)
-        return;
+        perror("Error: table pointer is empty");//return;
 
     fd = fopen(file_name, "r");
     if (!fd)
@@ -74,7 +74,7 @@ void print_cdf(struct cdf_table *table)
         return;
 
     for (i = 0; i < table->num_entry; i++)
-        printf("%.2f %.2f\n", table->entries[i].value, table->entries[i].cdf);
+        printf("%.2f\t%.2f\n", table->entries[i].value, table->entries[i].cdf);
 }
 
 /* get average value of CDF distribution */

@@ -33,64 +33,64 @@ const uint8_t UDP_PROT_NUMBER = 17; //!< UDP Protocol number
 
 
 bool operator < (const Ipv4FlowClassifier::FiveTuple &t1,
-                 const Ipv4FlowClassifier::FiveTuple &t2)
+				 const Ipv4FlowClassifier::FiveTuple &t2)
 {
   if (t1.sourceAddress < t2.sourceAddress)
-    {
-      return true;
-    }
+	{
+	  return true;
+	}
   if (t1.sourceAddress != t2.sourceAddress)
-    {
-      return false;
-    }
+	{
+	  return false;
+	}
 
   if (t1.destinationAddress < t2.destinationAddress)
-    {
-      return true;
-    }
+	{
+	  return true;
+	}
   if (t1.destinationAddress != t2.destinationAddress)
-    {
-      return false;
-    }
+	{
+	  return false;
+	}
 
   if (t1.protocol < t2.protocol)
-    {
-      return true;
-    }
+	{
+	  return true;
+	}
   if (t1.protocol != t2.protocol)
-    {
-      return false;
-    }
+	{
+	  return false;
+	}
 
   if (t1.sourcePort < t2.sourcePort)
-    {
-      return true;
-    }
+	{
+	  return true;
+	}
   if (t1.sourcePort != t2.sourcePort)
-    {
-      return false;
-    }
+	{
+	  return false;
+	}
 
   if (t1.destinationPort < t2.destinationPort)
-    {
-      return true;
-    }
+	{
+	  return true;
+	}
   if (t1.destinationPort != t2.destinationPort)
-    {
-      return false;
-    }
+	{
+	  return false;
+	}
 
   return false;
 }
 
 bool operator == (const Ipv4FlowClassifier::FiveTuple &t1,
-                  const Ipv4FlowClassifier::FiveTuple &t2)
+				  const Ipv4FlowClassifier::FiveTuple &t2)
 {
   return (t1.sourceAddress      == t2.sourceAddress &&
-          t1.destinationAddress == t2.destinationAddress &&
-          t1.protocol           == t2.protocol &&
-          t1.sourcePort         == t2.sourcePort &&
-          t1.destinationPort    == t2.destinationPort);
+		  t1.destinationAddress == t2.destinationAddress &&
+		  t1.protocol           == t2.protocol &&
+		  t1.sourcePort         == t2.sourcePort &&
+		  t1.destinationPort    == t2.destinationPort);
 }
 
 
@@ -101,13 +101,13 @@ Ipv4FlowClassifier::Ipv4FlowClassifier ()
 
 bool
 Ipv4FlowClassifier::Classify (const Ipv4Header &ipHeader, Ptr<const Packet> ipPayload,
-                              uint32_t *out_flowId, uint32_t *out_packetId)
+							  uint32_t *out_flowId, uint32_t *out_packetId)
 {
   if (ipHeader.GetFragmentOffset () > 0 )
-    {
-      // Ignore fragments: they don't carry a valid L4 header
-      return false;
-    }
+	{
+	  // Ignore fragments: they don't carry a valid L4 header
+	  return false;
+	}
 
   FiveTuple tuple;
   tuple.sourceAddress = ipHeader.GetSource ();
@@ -115,15 +115,15 @@ Ipv4FlowClassifier::Classify (const Ipv4Header &ipHeader, Ptr<const Packet> ipPa
   tuple.protocol = ipHeader.GetProtocol ();
 
   if ((tuple.protocol != UDP_PROT_NUMBER) && (tuple.protocol != TCP_PROT_NUMBER))
-    {
-      return false;
-    }
+	{
+	  return false;
+	}
 
   if (ipPayload->GetSize () < 4)
-    {
-      // the packet doesn't carry enough bytes
-      return false;
-    }
+	{
+	  // the packet doesn't carry enough bytes
+	  return false;
+	}
 
   // we rely on the fact that for both TCP and UDP the ports are
   // carried in the first 4 octects.
@@ -148,19 +148,22 @@ Ipv4FlowClassifier::Classify (const Ipv4Header &ipHeader, Ptr<const Packet> ipPa
 
   // try to insert the tuple, but check if it already exists
   std::pair<std::map<FiveTuple, FlowId>::iterator, bool> insert
-    = m_flowMap.insert (std::pair<FiveTuple, FlowId> (tuple, 0));
+	= m_flowMap.insert (std::pair<FiveTuple, FlowId> (tuple, 0));
 
   // if the insertion succeeded, we need to assign this tuple a new flow identifier
   if (insert.second)
-    {
-      FlowId newFlowId = GetNewFlowId ();
-      insert.first->second = newFlowId;
-      m_flowPktIdMap[newFlowId] = 0;
-    }
+	{
+		// salvatorg
+	//   uint32_t newFlowId = TcpSocketBase::CalFlowId (ipHeader.GetSource (),
+	// 			ipHeader.GetDestination (), srcPort, dstPort);
+	  FlowId newFlowId = GetNewFlowId ();
+	  insert.first->second = newFlowId;
+	  m_flowPktIdMap[newFlowId] = 0;
+	}
   else
-    {
-      m_flowPktIdMap[insert.first->second] ++;
-    }
+	{
+	  m_flowPktIdMap[insert.first->second] ++;
+	}
 
   *out_flowId = insert.first->second;
   *out_packetId = m_flowPktIdMap[*out_flowId];
@@ -173,13 +176,13 @@ Ipv4FlowClassifier::FiveTuple
 Ipv4FlowClassifier::FindFlow (FlowId flowId) const
 {
   for (std::map<FiveTuple, FlowId>::const_iterator
-       iter = m_flowMap.begin (); iter != m_flowMap.end (); iter++)
-    {
-      if (iter->second == flowId)
-        {
-          return iter->first;
-        }
-    }
+	   iter = m_flowMap.begin (); iter != m_flowMap.end (); iter++)
+	{
+	  if (iter->second == flowId)
+		{
+		  return iter->first;
+		}
+	}
   NS_FATAL_ERROR ("Could not find the flow with ID " << flowId);
   FiveTuple retval = { Ipv4Address::GetZero (), Ipv4Address::GetZero (), 0, 0, 0 };
   return retval;
@@ -194,17 +197,17 @@ Ipv4FlowClassifier::SerializeToXmlStream (std::ostream &os, int indent) const
 
   indent += 2;
   for (std::map<FiveTuple, FlowId>::const_iterator
-       iter = m_flowMap.begin (); iter != m_flowMap.end (); iter++)
-    {
-      INDENT (indent);
-      os << "<Flow flowId=\"" << iter->second << "\""
-         << " sourceAddress=\"" << iter->first.sourceAddress << "\""
-         << " destinationAddress=\"" << iter->first.destinationAddress << "\""
-         << " protocol=\"" << int(iter->first.protocol) << "\""
-         << " sourcePort=\"" << iter->first.sourcePort << "\""
-         << " destinationPort=\"" << iter->first.destinationPort << "\""
-         << " />\n";
-    }
+	   iter = m_flowMap.begin (); iter != m_flowMap.end (); iter++)
+	{
+	  INDENT (indent);
+	  os << "<Flow flowId=\"" << iter->second << "\""
+		 << " sourceAddress=\"" << iter->first.sourceAddress << "\""
+		 << " destinationAddress=\"" << iter->first.destinationAddress << "\""
+		 << " protocol=\"" << int(iter->first.protocol) << "\""
+		 << " sourcePort=\"" << iter->first.sourcePort << "\""
+		 << " destinationPort=\"" << iter->first.destinationPort << "\""
+		 << " />\n";
+	}
 
   indent -= 2;
   INDENT (indent); os << "</Ipv4FlowClassifier>\n";

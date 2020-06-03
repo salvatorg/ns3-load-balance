@@ -121,6 +121,7 @@ public:
 
   void SetClove (bool enable);
 
+  void SetLetflow (bool enable);
   /**
    * Aggregate implementations of the ns3::Ipv4, ns3::Ipv6, ns3::Udp, and ns3::Tcp classes
    * onto the provided node.  This method will assert if called on a node that
@@ -358,6 +359,8 @@ private:
   bool m_TLBEnabled;
 
   bool m_cloveEnabled;
+
+  bool m_LetflowEnabled;
 };
 
 } // namespace ns3

@@ -1,0 +1,523 @@
+Waf: Entering directory `/root/ns3-load-balance/build'
+[ 917/2591] Compiling examples/load-balance/conga-simulation-large.cc
+[2549/2591] Linking build/examples/load-balance/ns3-dev-conga-simulation-large-debug
+Waf: Leaving directory `/root/ns3-load-balance/build'
+Build commands will be stored in build/compile_commands.json
+'build' finished successfully (2.458s)
+Enabling DcTcp
+Enabling Clove
+Config parameters
+Install Internet stacks
+Install channels and assign addresses
+Configuring servers
+Configuring switches
+ Leaf ID :  8,0  Spine ID:  0,0
+ Leaf ID :  8,0  Spine ID:  1,1
+ Leaf ID :  8,0  Spine ID:  2,2
+ Leaf ID :  8,0  Spine ID:  3,3
+	Reducing Link Capacity of Leaf: 0 with port: 20
+	Reducing Link Capacity of Spine: 3 with port: 1
+ Leaf ID :  8,0  Spine ID:  4,4
+ Leaf ID :  8,0  Spine ID:  5,5
+ Leaf ID :  8,0  Spine ID:  6,6
+ Leaf ID :  8,0  Spine ID:  7,7
+ Leaf ID :  9,1  Spine ID:  0,0
+ Leaf ID :  9,1  Spine ID:  1,1
+ Leaf ID :  9,1  Spine ID:  2,2
+ Leaf ID :  9,1  Spine ID:  3,3
+ Leaf ID :  9,1  Spine ID:  4,4
+ Leaf ID :  9,1  Spine ID:  5,5
+ Leaf ID :  9,1  Spine ID:  6,6
+ Leaf ID :  9,1  Spine ID:  7,7
+ Leaf ID :  10,2  Spine ID:  0,0
+ Leaf ID :  10,2  Spine ID:  1,1
+ Leaf ID :  10,2  Spine ID:  2,2
+ Leaf ID :  10,2  Spine ID:  3,3
+ Leaf ID :  10,2  Spine ID:  4,4
+	Reducing Link Capacity of Leaf: 2 with port: 21
+	Reducing Link Capacity of Spine: 4 with port: 3
+ Leaf ID :  10,2  Spine ID:  5,5
+ Leaf ID :  10,2  Spine ID:  6,6
+ Leaf ID :  10,2  Spine ID:  7,7
+ Leaf ID :  11,3  Spine ID:  0,0
+ Leaf ID :  11,3  Spine ID:  1,1
+ Leaf ID :  11,3  Spine ID:  2,2
+ Leaf ID :  11,3  Spine ID:  3,3
+ Leaf ID :  11,3  Spine ID:  4,4
+ Leaf ID :  11,3  Spine ID:  5,5
+ Leaf ID :  11,3  Spine ID:  6,6
+ Leaf ID :  11,3  Spine ID:  7,7
+	Reducing Link Capacity of Leaf: 3 with port: 24
+	Reducing Link Capacity of Spine: 7 with port: 4
+ Leaf ID :  12,4  Spine ID:  0,0
+ Leaf ID :  12,4  Spine ID:  1,1
+ Leaf ID :  12,4  Spine ID:  2,2
+ Leaf ID :  12,4  Spine ID:  3,3
+ Leaf ID :  12,4  Spine ID:  4,4
+ Leaf ID :  12,4  Spine ID:  5,5
+ Leaf ID :  12,4  Spine ID:  6,6
+	Reducing Link Capacity of Leaf: 4 with port: 23
+	Reducing Link Capacity of Spine: 6 with port: 5
+ Leaf ID :  12,4  Spine ID:  7,7
+ Leaf ID :  13,5  Spine ID:  0,0
+ Leaf ID :  13,5  Spine ID:  1,1
+ Leaf ID :  13,5  Spine ID:  2,2
+ Leaf ID :  13,5  Spine ID:  3,3
+	Reducing Link Capacity of Leaf: 5 with port: 20
+	Reducing Link Capacity of Spine: 3 with port: 6
+ Leaf ID :  13,5  Spine ID:  4,4
+ Leaf ID :  13,5  Spine ID:  5,5
+ Leaf ID :  13,5  Spine ID:  6,6
+ Leaf ID :  13,5  Spine ID:  7,7
+ Leaf ID :  14,6  Spine ID:  0,0
+	Reducing Link Capacity of Leaf: 6 with port: 17
+	Reducing Link Capacity of Spine: 0 with port: 7
+ Leaf ID :  14,6  Spine ID:  1,1
+ Leaf ID :  14,6  Spine ID:  2,2
+	Reducing Link Capacity of Leaf: 6 with port: 19
+	Reducing Link Capacity of Spine: 2 with port: 7
+ Leaf ID :  14,6  Spine ID:  3,3
+ Leaf ID :  14,6  Spine ID:  4,4
+ Leaf ID :  14,6  Spine ID:  5,5
+ Leaf ID :  14,6  Spine ID:  6,6
+ Leaf ID :  14,6  Spine ID:  7,7
+ Leaf ID :  15,7  Spine ID:  0,0
+ Leaf ID :  15,7  Spine ID:  1,1
+ Leaf ID :  15,7  Spine ID:  2,2
+ Leaf ID :  15,7  Spine ID:  3,3
+ Leaf ID :  15,7  Spine ID:  4,4
+	Reducing Link Capacity of Leaf: 7 with port: 21
+	Reducing Link Capacity of Spine: 4 with port: 8
+ Leaf ID :  15,7  Spine ID:  5,5
+ Leaf ID :  15,7  Spine ID:  6,6
+ Leaf ID :  15,7  Spine ID:  7,7
+Installed RED Queues, Tot.Number : 128 queues ! 
+Populate global routing tables
+Configuring Clove available paths
+Over-subscription ratio (server/leaf): 2:1 
+Initialize CDF Table
+Average request size: 1.71125e+06 bytes
+
+CDF Table
+Calculating request rate
+RequestRate : 328.707 per second
+Initialize random seed: 21
+Create applications
+Install applications:
+Install applications:
+Install applications:
+Install applications:
+Install applications:
+Install applications:
+Install applications:
+Install applications:
+Total Number of flows: 168426
+Total flow size 285195046531 Bytes
+Average flow size: 1.6933e+06
+Enabling flow monitor
+Enabling link monitor
+Enabling Clove tracing
+FLOWLET TIMEOUT	: 240us
+RED_QUEUE_MARKING	: 20 packets, 28000Bytes
+WORKLOAD CDF	: examples/load-balance/DCTCP_CDF.txt
+Number of Nodes in simualtion	:144
+Start simulation
+[Server 0]
+Num. Decisions: 43104 Sum: 43104
+Good: 18685 Bad: 17214 Demi: 7141 Unknown: 64
+[Server 1]
+Num. Decisions: 60706 Sum: 60706
+Good: 26386 Bad: 24645 Demi: 9593 Unknown: 82
+[Server 2]
+Num. Decisions: 44280 Sum: 44280
+Good: 18693 Bad: 18049 Demi: 7483 Unknown: 55
+[Server 3]
+Num. Decisions: 40779 Sum: 40779
+Good: 17595 Bad: 15764 Demi: 7371 Unknown: 49
+[Server 4]
+Num. Decisions: 51398 Sum: 51398
+Good: 22520 Bad: 20780 Demi: 8036 Unknown: 62
+[Server 5]
+Num. Decisions: 47786 Sum: 47786
+Good: 20447 Bad: 19020 Demi: 8233 Unknown: 86
+[Server 6]
+Num. Decisions: 45826 Sum: 45826
+Good: 20008 Bad: 18089 Demi: 7684 Unknown: 45
+[Server 7]
+Num. Decisions: 44157 Sum: 44157
+Good: 18617 Bad: 17009 Demi: 8481 Unknown: 50
+[Server 8]
+Num. Decisions: 48407 Sum: 48407
+Good: 21550 Bad: 18834 Demi: 7967 Unknown: 56
+[Server 9]
+Num. Decisions: 57469 Sum: 57469
+Good: 24800 Bad: 23115 Demi: 9476 Unknown: 78
+[Server 10]
+Num. Decisions: 42883 Sum: 42883
+Good: 17664 Bad: 17124 Demi: 8032 Unknown: 63
+[Server 11]
+Num. Decisions: 49821 Sum: 49821
+Good: 21566 Bad: 20570 Demi: 7617 Unknown: 68
+[Server 12]
+Num. Decisions: 35620 Sum: 35620
+Good: 15323 Bad: 13652 Demi: 6581 Unknown: 64
+[Server 13]
+Num. Decisions: 49180 Sum: 49180
+Good: 21227 Bad: 19795 Demi: 8105 Unknown: 53
+[Server 14]
+Num. Decisions: 45711 Sum: 45711
+Good: 19194 Bad: 18312 Demi: 8152 Unknown: 53
+[Server 15]
+Num. Decisions: 57792 Sum: 57792
+Good: 25922 Bad: 22363 Demi: 9427 Unknown: 80
+[Server 16]
+Num. Decisions: 15867 Sum: 15867
+Good: 8069 Bad: 4760 Demi: 2974 Unknown: 64
+[Server 17]
+Num. Decisions: 16363 Sum: 16363
+Good: 8398 Bad: 4790 Demi: 3116 Unknown: 59
+[Server 18]
+Num. Decisions: 18760 Sum: 18760
+Good: 9410 Bad: 5849 Demi: 3411 Unknown: 90
+[Server 19]
+Num. Decisions: 26169 Sum: 26169
+Good: 13310 Bad: 8214 Demi: 4541 Unknown: 104
+[Server 20]
+Num. Decisions: 15401 Sum: 15401
+Good: 7598 Bad: 4758 Demi: 2965 Unknown: 80
+[Server 21]
+Num. Decisions: 19208 Sum: 19208
+Good: 9689 Bad: 5991 Demi: 3457 Unknown: 71
+[Server 22]
+Num. Decisions: 18301 Sum: 18301
+Good: 9329 Bad: 5626 Demi: 3271 Unknown: 75
+[Server 23]
+Num. Decisions: 17839 Sum: 17839
+Good: 9090 Bad: 5425 Demi: 3229 Unknown: 95
+[Server 24]
+Num. Decisions: 19089 Sum: 19089
+Good: 10006 Bad: 5651 Demi: 3366 Unknown: 66
+[Server 25]
+Num. Decisions: 13643 Sum: 13643
+Good: 7014 Bad: 4004 Demi: 2576 Unknown: 49
+[Server 26]
+Num. Decisions: 15629 Sum: 15629
+Good: 8137 Bad: 4523 Demi: 2901 Unknown: 68
+[Server 27]
+Num. Decisions: 20063 Sum: 20063
+Good: 10090 Bad: 6376 Demi: 3508 Unknown: 89
+[Server 28]
+Num. Decisions: 17903 Sum: 17903
+Good: 8996 Bad: 5425 Demi: 3387 Unknown: 95
+[Server 29]
+Num. Decisions: 14887 Sum: 14887
+Good: 7506 Bad: 4487 Demi: 2829 Unknown: 65
+[Server 30]
+Num. Decisions: 16228 Sum: 16228
+Good: 8113 Bad: 5243 Demi: 2825 Unknown: 47
+[Server 31]
+Num. Decisions: 15571 Sum: 15571
+Good: 7861 Bad: 4799 Demi: 2838 Unknown: 73
+[Server 32]
+Num. Decisions: 67448 Sum: 67448
+Good: 21822 Bad: 28477 Demi: 16988 Unknown: 161
+[Server 33]
+Num. Decisions: 64110 Sum: 64110
+Good: 20659 Bad: 27962 Demi: 15359 Unknown: 130
+[Server 34]
+Num. Decisions: 74561 Sum: 74561
+Good: 25180 Bad: 33527 Demi: 15691 Unknown: 163
+[Server 35]
+Num. Decisions: 56045 Sum: 56045
+Good: 17192 Bad: 23518 Demi: 15183 Unknown: 152
+[Server 36]
+Num. Decisions: 57764 Sum: 57764
+Good: 18085 Bad: 24338 Demi: 15206 Unknown: 135
+[Server 37]
+Num. Decisions: 64326 Sum: 64326
+Good: 21758 Bad: 27488 Demi: 14922 Unknown: 158
+[Server 38]
+Num. Decisions: 72892 Sum: 72892
+Good: 24382 Bad: 32242 Demi: 16068 Unknown: 200
+[Server 39]
+Num. Decisions: 71800 Sum: 71800
+Good: 23533 Bad: 31327 Demi: 16779 Unknown: 161
+[Server 40]
+Num. Decisions: 71914 Sum: 71914
+Good: 22980 Bad: 31267 Demi: 17490 Unknown: 177
+[Server 41]
+Num. Decisions: 84489 Sum: 84489
+Good: 27149 Bad: 37345 Demi: 19812 Unknown: 183
+[Server 42]
+Num. Decisions: 65670 Sum: 65670
+Good: 21482 Bad: 28858 Demi: 15204 Unknown: 126
+[Server 43]
+Num. Decisions: 75370 Sum: 75370
+Good: 25485 Bad: 33577 Demi: 16154 Unknown: 154
+[Server 44]
+Num. Decisions: 79713 Sum: 79713
+Good: 26703 Bad: 35703 Demi: 17125 Unknown: 182
+[Server 45]
+Num. Decisions: 69594 Sum: 69594
+Good: 22861 Bad: 30825 Demi: 15740 Unknown: 168
+[Server 46]
+Num. Decisions: 71942 Sum: 71942
+Good: 23145 Bad: 31512 Demi: 17094 Unknown: 191
+[Server 47]
+Num. Decisions: 60103 Sum: 60103
+Good: 19391 Bad: 25280 Demi: 15269 Unknown: 163
+[Server 48]
+Num. Decisions: 64677 Sum: 64677
+Good: 23170 Bad: 29505 Demi: 11922 Unknown: 80
+[Server 49]
+Num. Decisions: 64521 Sum: 64521
+Good: 22601 Bad: 28786 Demi: 13069 Unknown: 65
+[Server 50]
+Num. Decisions: 66481 Sum: 66481
+Good: 24216 Bad: 28933 Demi: 13245 Unknown: 87
+[Server 51]
+Num. Decisions: 49821 Sum: 49821
+Good: 17953 Bad: 22248 Demi: 9560 Unknown: 60
+[Server 52]
+Num. Decisions: 66330 Sum: 66330
+Good: 23936 Bad: 29319 Demi: 13016 Unknown: 59
+[Server 53]
+Num. Decisions: 61621 Sum: 61621
+Good: 21188 Bad: 27180 Demi: 13178 Unknown: 75
+[Server 54]
+Num. Decisions: 55140 Sum: 55140
+Good: 19774 Bad: 23765 Demi: 11536 Unknown: 65
+[Server 55]
+Num. Decisions: 55609 Sum: 55609
+Good: 19349 Bad: 24356 Demi: 11838 Unknown: 66
+[Server 56]
+Num. Decisions: 55567 Sum: 55567
+Good: 19513 Bad: 23914 Demi: 12066 Unknown: 74
+[Server 57]
+Num. Decisions: 73325 Sum: 73325
+Good: 25271 Bad: 32593 Demi: 15380 Unknown: 81
+[Server 58]
+Num. Decisions: 71575 Sum: 71575
+Good: 24835 Bad: 32753 Demi: 13913 Unknown: 74
+[Server 59]
+Num. Decisions: 61567 Sum: 61567
+Good: 22260 Bad: 27121 Demi: 12113 Unknown: 73
+[Server 60]
+Num. Decisions: 69327 Sum: 69327
+Good: 25028 Bad: 30454 Demi: 13771 Unknown: 74
+[Server 61]
+Num. Decisions: 64573 Sum: 64573
+Good: 22881 Bad: 29019 Demi: 12594 Unknown: 79
+[Server 62]
+Num. Decisions: 61654 Sum: 61654
+Good: 22437 Bad: 26699 Demi: 12440 Unknown: 78
+[Server 63]
+Num. Decisions: 60383 Sum: 60383
+Good: 21563 Bad: 27119 Demi: 11645 Unknown: 56
+[Server 64]
+Num. Decisions: 45848 Sum: 45848
+Good: 20956 Bad: 16965 Demi: 7859 Unknown: 68
+[Server 65]
+Num. Decisions: 47537 Sum: 47537
+Good: 20982 Bad: 18467 Demi: 8005 Unknown: 83
+[Server 66]
+Num. Decisions: 38518 Sum: 38518
+Good: 17351 Bad: 14936 Demi: 6170 Unknown: 61
+[Server 67]
+Num. Decisions: 43664 Sum: 43664
+Good: 19947 Bad: 16628 Demi: 7030 Unknown: 59
+[Server 68]
+Num. Decisions: 40728 Sum: 40728
+Good: 18417 Bad: 15249 Demi: 7002 Unknown: 60
+[Server 69]
+Num. Decisions: 43891 Sum: 43891
+Good: 19446 Bad: 15992 Demi: 8382 Unknown: 71
+[Server 70]
+Num. Decisions: 35033 Sum: 35033
+Good: 15958 Bad: 13170 Demi: 5854 Unknown: 51
+[Server 71]
+Num. Decisions: 50119 Sum: 50119
+Good: 22714 Bad: 19122 Demi: 8207 Unknown: 76
+[Server 72]
+Num. Decisions: 45128 Sum: 45128
+Good: 20532 Bad: 17112 Demi: 7419 Unknown: 65
+[Server 73]
+Num. Decisions: 44817 Sum: 44817
+Good: 20521 Bad: 16591 Demi: 7635 Unknown: 70
+[Server 74]
+Num. Decisions: 41766 Sum: 41766
+Good: 18720 Bad: 16196 Demi: 6782 Unknown: 68
+[Server 75]
+Num. Decisions: 37432 Sum: 37432
+Good: 16610 Bad: 14652 Demi: 6112 Unknown: 58
+[Server 76]
+Num. Decisions: 35119 Sum: 35119
+Good: 15690 Bad: 12820 Demi: 6544 Unknown: 65
+[Server 77]
+Num. Decisions: 37625 Sum: 37625
+Good: 16978 Bad: 13860 Demi: 6725 Unknown: 62
+[Server 78]
+Num. Decisions: 44278 Sum: 44278
+Good: 19680 Bad: 16758 Demi: 7760 Unknown: 80
+[Server 79]
+Num. Decisions: 34257 Sum: 34257
+Good: 15371 Bad: 12545 Demi: 6298 Unknown: 43
+[Server 80]
+Num. Decisions: 55249 Sum: 55249
+Good: 19076 Bad: 23757 Demi: 12341 Unknown: 75
+[Server 81]
+Num. Decisions: 51664 Sum: 51664
+Good: 18439 Bad: 21986 Demi: 11170 Unknown: 69
+[Server 82]
+Num. Decisions: 56141 Sum: 56141
+Good: 21014 Bad: 24770 Demi: 10309 Unknown: 48
+[Server 83]
+Num. Decisions: 67416 Sum: 67416
+Good: 23973 Bad: 29579 Demi: 13799 Unknown: 65
+[Server 84]
+Num. Decisions: 44201 Sum: 44201
+Good: 15631 Bad: 19035 Demi: 9500 Unknown: 35
+[Server 85]
+Num. Decisions: 57715 Sum: 57715
+Good: 20283 Bad: 25218 Demi: 12152 Unknown: 62
+[Server 86]
+Num. Decisions: 56490 Sum: 56490
+Good: 20718 Bad: 24749 Demi: 10977 Unknown: 46
+[Server 87]
+Num. Decisions: 49881 Sum: 49881
+Good: 17296 Bad: 20984 Demi: 11555 Unknown: 46
+[Server 88]
+Num. Decisions: 55780 Sum: 55780
+Good: 19264 Bad: 23926 Demi: 12521 Unknown: 69
+[Server 89]
+Num. Decisions: 58756 Sum: 58756
+Good: 21364 Bad: 25117 Demi: 12226 Unknown: 49
+[Server 90]
+Num. Decisions: 55859 Sum: 55859
+Good: 19786 Bad: 23954 Demi: 12057 Unknown: 62
+[Server 91]
+Num. Decisions: 60032 Sum: 60032
+Good: 22345 Bad: 26004 Demi: 11623 Unknown: 60
+[Server 92]
+Num. Decisions: 53276 Sum: 53276
+Good: 19251 Bad: 22460 Demi: 11509 Unknown: 56
+[Server 93]
+Num. Decisions: 65326 Sum: 65326
+Good: 24179 Bad: 28619 Demi: 12466 Unknown: 62
+[Server 94]
+Num. Decisions: 57322 Sum: 57322
+Good: 19640 Bad: 24579 Demi: 13038 Unknown: 65
+[Server 95]
+Num. Decisions: 59613 Sum: 59613
+Good: 21458 Bad: 25835 Demi: 12278 Unknown: 42
+[Server 96]
+Num. Decisions: 111784 Sum: 111784
+Good: 37247 Bad: 56179 Demi: 17965 Unknown: 393
+[Server 97]
+Num. Decisions: 111641 Sum: 111641
+Good: 37038 Bad: 55034 Demi: 19105 Unknown: 464
+[Server 98]
+Num. Decisions: 94384 Sum: 94384
+Good: 31579 Bad: 46713 Demi: 15676 Unknown: 416
+[Server 99]
+Num. Decisions: 143738 Sum: 143738
+Good: 50925 Bad: 71505 Demi: 20781 Unknown: 527
+[Server 100]
+Num. Decisions: 109760 Sum: 109760
+Good: 37836 Bad: 54236 Demi: 17258 Unknown: 430
+[Server 101]
+Num. Decisions: 141009 Sum: 141009
+Good: 48959 Bad: 69617 Demi: 21974 Unknown: 459
+[Server 102]
+Num. Decisions: 123104 Sum: 123104
+Good: 41851 Bad: 60369 Demi: 20376 Unknown: 508
+[Server 103]
+Num. Decisions: 128179 Sum: 128179
+Good: 42829 Bad: 64455 Demi: 20393 Unknown: 502
+[Server 104]
+Num. Decisions: 102143 Sum: 102143
+Good: 33843 Bad: 50343 Demi: 17551 Unknown: 406
+[Server 105]
+Num. Decisions: 127697 Sum: 127697
+Good: 44940 Bad: 64176 Demi: 18152 Unknown: 429
+[Server 106]
+Num. Decisions: 123776 Sum: 123776
+Good: 42284 Bad: 61212 Demi: 19840 Unknown: 440
+[Server 107]
+Num. Decisions: 123175 Sum: 123175
+Good: 42908 Bad: 60293 Demi: 19484 Unknown: 490
+[Server 108]
+Num. Decisions: 129656 Sum: 129656
+Good: 43670 Bad: 64212 Demi: 21246 Unknown: 528
+[Server 109]
+Num. Decisions: 116347 Sum: 116347
+Good: 39959 Bad: 57396 Demi: 18530 Unknown: 462
+[Server 110]
+Num. Decisions: 100103 Sum: 100103
+Good: 34689 Bad: 49371 Demi: 15702 Unknown: 341
+[Server 111]
+Num. Decisions: 128254 Sum: 128254
+Good: 43547 Bad: 63019 Demi: 21151 Unknown: 537
+[Server 112]
+Num. Decisions: 57214 Sum: 57214
+Good: 22457 Bad: 24224 Demi: 10471 Unknown: 62
+[Server 113]
+Num. Decisions: 63082 Sum: 63082
+Good: 24247 Bad: 26621 Demi: 12154 Unknown: 60
+[Server 114]
+Num. Decisions: 59948 Sum: 59948
+Good: 23642 Bad: 25510 Demi: 10742 Unknown: 54
+[Server 115]
+Num. Decisions: 58401 Sum: 58401
+Good: 23239 Bad: 25042 Demi: 10064 Unknown: 56
+[Server 116]
+Num. Decisions: 66917 Sum: 66917
+Good: 26134 Bad: 28796 Demi: 11920 Unknown: 67
+[Server 117]
+Num. Decisions: 57055 Sum: 57055
+Good: 22279 Bad: 23891 Demi: 10821 Unknown: 64
+[Server 118]
+Num. Decisions: 51884 Sum: 51884
+Good: 20303 Bad: 21810 Demi: 9715 Unknown: 56
+[Server 119]
+Num. Decisions: 55797 Sum: 55797
+Good: 21946 Bad: 24443 Demi: 9363 Unknown: 45
+[Server 120]
+Num. Decisions: 56851 Sum: 56851
+Good: 21721 Bad: 24356 Demi: 10724 Unknown: 50
+[Server 121]
+Num. Decisions: 61061 Sum: 61061
+Good: 23720 Bad: 26387 Demi: 10885 Unknown: 69
+[Server 122]
+Num. Decisions: 64673 Sum: 64673
+Good: 25528 Bad: 27637 Demi: 11447 Unknown: 61
+[Server 123]
+Num. Decisions: 60117 Sum: 60117
+Good: 22872 Bad: 25579 Demi: 11606 Unknown: 60
+[Server 124]
+Num. Decisions: 48043 Sum: 48043
+Good: 18061 Bad: 20045 Demi: 9874 Unknown: 63
+[Server 125]
+Num. Decisions: 55175 Sum: 55175
+Good: 21104 Bad: 23857 Demi: 10167 Unknown: 47
+[Server 126]
+Num. Decisions: 40778 Sum: 40778
+Good: 15496 Bad: 16994 Demi: 8234 Unknown: 54
+[Server 127]
+Num. Decisions: 63580 Sum: 63580
+Good: 24182 Bad: 27556 Demi: 11780 Unknown: 62
+Clove_10G_0.9_ECN20-1-large-load-8X8-0.9-DcTcp-clove-1-240-60-0-21-capacity-asym-b100.xml
+Clove_10G_0.9_ECN20-1-large-load-8X8-0.9-DcTcp-clove-1-240-60-0-21-capacity-asym-b100-link-utility.out
+Stop simulation
+0.00	0.00
+10000.00	0.15
+20000.00	0.20
+30000.00	0.30
+50000.00	0.40
+80000.00	0.53
+200000.00	0.60
+1000000.00	0.70
+2000000.00	0.80
+5000000.00	0.90
+10000000.00	0.97
+30000000.00	1.00

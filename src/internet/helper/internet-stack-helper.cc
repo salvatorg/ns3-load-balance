@@ -338,6 +338,12 @@ InternetStackHelper::SetClove (bool enable)
 }
 
 void
+InternetStackHelper::SetLetflow (bool enable)
+{
+  m_LetflowEnabled = enable;
+}
+
+void
 InternetStackHelper::SetIpv4StackInstall (bool enable)
 {
   m_ipv4Enabled = enable;
@@ -458,6 +464,10 @@ InternetStackHelper::Install (Ptr<Node> node) const
        if (m_cloveEnabled)
         {
           CreateAndAggregateObjectFromTypeId (node, "ns3::Ipv4Clove");
+        }
+       if (m_LetflowEnabled)
+        {
+          CreateAndAggregateObjectFromTypeId (node, "ns3::Ipv4LetFlowRouting");
         }
 
       CreateAndAggregateObjectFromTypeId (node, "ns3::ArpL3Protocol");

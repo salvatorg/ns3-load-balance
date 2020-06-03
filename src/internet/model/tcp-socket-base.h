@@ -1037,6 +1037,11 @@ protected:
   bool                      m_piggybackCloveInfo;
   uint32_t                  m_ClovePath;
 
+  // salvatorg
+  // ECN trace flags
+  uint32_t					m_path_ECNed_old;
+  uint32_t					m_path_ECNed_new;
+
   // Pause Support
   bool                      m_isPauseEnabled;
   bool                      m_isPause;

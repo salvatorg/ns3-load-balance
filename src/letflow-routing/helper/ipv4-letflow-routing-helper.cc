@@ -5,7 +5,7 @@
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("Ipv4DLetFlowRoutingHelper");
+NS_LOG_COMPONENT_DEFINE ("Ipv4LetFlowRoutingHelper");
 
 Ipv4LetFlowRoutingHelper::Ipv4LetFlowRoutingHelper ()
 {

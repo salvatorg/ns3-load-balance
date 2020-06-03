@@ -8,6 +8,8 @@
 #include "ns3/channel.h"
 #include "ns3/node.h"
 #include "ns3/flow-id-tag.h"
+#include "ns3/traffic-control-module.h"
+#include "ns3/ipv4-l3-protocol.h"
 
 #include <algorithm>
 
@@ -36,10 +38,15 @@ Ipv4LetFlowRouting::GetTypeId (void)
       .SetParent<Object>()
       .SetGroupName ("Internet")
       .AddConstructor<Ipv4LetFlowRouting> ()
+      .AddTraceSource ("LetflowPathTrace",
+                         "Check the queue sizes",
+                         MakeTraceSourceAccessor (&Ipv4LetFlowRouting::m_LetflowPathTrace),
+                         "ns3::Ipv4LetFlowRouting::LetflowPathCallback")
   ;
 
   return tid;
 }
+
 
 void
 Ipv4LetFlowRouting::AddRoute (Ipv4Address network, Ipv4Mask networkMask, uint32_t port)
@@ -50,6 +57,7 @@ Ipv4LetFlowRouting::AddRoute (Ipv4Address network, Ipv4Mask networkMask, uint32_
   letFlowRouteEntry.networkMask = networkMask;
   letFlowRouteEntry.port = port;
   m_routeEntryList.push_back (letFlowRouteEntry);
+
 }
 
 std::vector<LetFlowRouteEntry>
@@ -81,6 +89,7 @@ Ipv4LetFlowRouting::ConstructIpv4Route (uint32_t port, Ipv4Address destAddress)
   route->SetGateway (nextHopAddr);
   route->SetSource (m_ipv4->GetAddress (port, 0).GetLocal ());
   route->SetDestination (destAddress);
+
   return route;
 }
 
@@ -96,6 +105,8 @@ Ipv4LetFlowRouting::RouteOutput (Ptr<Packet> packet, const Ipv4Header &header, P
   NS_LOG_ERROR (this << " LetFlow routing is not support for local routing output");
   return 0;
 }
+
+
 
 bool
 Ipv4LetFlowRouting::RouteInput (Ptr<const Packet> p, const Ipv4Header &header, Ptr<const NetDevice> idev,
@@ -151,11 +162,16 @@ Ipv4LetFlowRouting::RouteInput (Ptr<const Packet> p, const Ipv4Header &header, P
 
   uint32_t selectedPort;
 
+
+
+
   // If the flowlet table entry is valid, return the port
+  // When the flowlet has not excedd the timeout, give the constant port from the table
   std::map<uint32_t, struct LetFlowFlowlet>::iterator flowletItr = m_flowletTable.find (flowId);
   if (flowletItr != m_flowletTable.end ())
   {
     LetFlowFlowlet flowlet = flowletItr->second;
+
     if (now - flowlet.activeTime <= m_flowletTimeout)
     {
       // Do not forget to update the flowlet active time
@@ -168,7 +184,6 @@ Ipv4LetFlowRouting::RouteInput (Ptr<const Packet> p, const Ipv4Header &header, P
       ucb (route, packet, header);
 
       m_flowletTable[flowId] = flowlet;
-
       return true;
     }
   }
@@ -185,6 +200,34 @@ Ipv4LetFlowRouting::RouteInput (Ptr<const Packet> p, const Ipv4Header &header, P
   ucb (route, packet, header);
 
   m_flowletTable[flowId] = flowlet;
+
+	// salvatorg
+
+	// Trace only leaf-spine not server-leaf queues
+	Ptr<NetDevice> dev = m_ipv4->GetNetDevice (selectedPort);
+	Ptr<Channel> channel = dev->GetChannel ();
+	uint32_t otherEnd = (channel->GetDevice (0) == dev) ? 1 : 0;
+	Ptr<Node> nextHop = channel->GetDevice (otherEnd)->GetNode ();
+	uint32_t nextIf = channel->GetDevice (otherEnd)->GetIfIndex ();
+
+	// Trace only the uplink, leaf to spine
+	if( selectedPort>16 && nextIf<8 )
+	{
+		Ptr<NetDevice> netDevice = m_ipv4->GetNetDevice (selectedPort); 
+		Ptr<TrafficControlLayer> tc = netDevice->GetNode ()->GetObject<TrafficControlLayer> ();
+		Ptr<QueueDisc> queueDisc = tc->GetRootQueueDiscOnDevice (netDevice);
+		// salvatorg
+		if(28000<queueDisc->GetNBytes ())
+			NS_LOG_UNCOND("Congested Flow [" << flowId << "] DST IP  " << destAddress << " NextHopIp " << route->GetGateway() << " SRC IP " << route->GetSource() << " Ports " << selectedPort << "->" << nextIf << " QueueSize: " <<queueDisc->GetNBytes ());
+		else
+			NS_LOG_UNCOND("Uncongested Flow [" << flowId << "] DST IP  " << destAddress << " NextHopIp " << route->GetGateway() << " SRC IP " << route->GetSource() << " Ports " << selectedPort << "->" << nextIf);
+		// m_LetflowPathTrace(queueDisc->GetNBytes ());
+	}
+	// else
+	// 	if( (selectedPort==1) )
+	// 		NS_LOG_UNCOND("Avoiding server-leaf tracing. Ports: " << selectedPort << "->" << nextIf << "  " << route->GetSource() << "->" << header.GetDestination());
+	// 	else
+	// 		NS_LOG_UNCOND("Avoiding leaf-server tracing. Ports: " << selectedPort << "->" << nextIf << "  " << route->GetSource() << "->" << header.GetDestination());
 
   return true;
 }
@@ -231,4 +274,3 @@ Ipv4LetFlowRouting::DoDispose (void)
 }
 
 }
-

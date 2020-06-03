@@ -2,25 +2,32 @@
 
 # Clove Run mode: 0 Edge flowlet, 1 Clove-ECN, 2 Clove-INT
 
-cd ../../build/examples/load-balance
+# cd ../../build/examples/load-balance
+cd ../..
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:../..
+#export NS_LOG='CongaSimulationLarge=level_all'
 
 echo "Starting Simulation: $1"
 
-for seed in {21..25}
-do
-    for CloveRunMode in 0  1
-    do
-        for Ld in 0.4 0.6
+CDF='DCTCP'
+# CDF='VL2'
+seed=21
+timeout=50
+leafServerCapacity=10
+spineLeafCapacity=10
+# for seed in 21
+# do
+        for Ld in 0.1 0.2 0.3 0.4
         do
-           nohup ./ns3-dev-conga-simulation-large-optimized --ID=$1 --runMode=Clove --cloveRunMode=$CloveRunMode --cloveDisToUncongestedPath=false --StartTime=0 --EndTime=7 --FlowLaunchEndTime=2 --leafCount=8 --spineCount=8 --leafServerCapacity=10  --serverCount=16 --transportProt=DcTcp --cdfFileName=../../../examples/load-balance/DCTCP_CDF.txt --load=$Ld --randomSeed=$seed > /dev/null 2>&1 &
- #          nohup ./ns3-dev-conga-simulation-large-optimized --ID=$1 --runMode=Clove --cloveRunMode=$CloveRunMode --cloveDisToUncongestedPath=true --StartTime=0 --EndTime=7 --FlowLaunchEndTime=2 --leafCount=8 --spineCount=8 --leafServerCapacity=10  --serverCount=16 --transportProt=DcTcp --cdfFileName=../../../examples/load-balance/VL2_CDF.txt --load=$Ld --randomSeed=$seed > /dev/null 2>&1 &
-        #  nohup ./ns3-dev-conga-simulation-large-optimized --ID=$1 --runMode=TLB --StartTime=0 --EndTime=3 --FlowLaunchEndTime=0.5 --leafCount=8 --spineCount=8 --leafServerCapacity=10  --serverCount=16 --TLBRunMode=12 --TLBSmooth=true --TLBProbingEnable=true --TLBMinRTT=63 --TLBT1=66 --TLBRerouting=true --TcpPause=false --TLBProbingInterval=500 --transportProt=DcTcp  --TLBBetterPathRTT=100 --TLBHighRTT=180 --TLBS=640000 --cdfFileName=../../../examples/load-balance/VL2_CDF.txt --load=$Ld --asymCapacity=false --asymCapacityPoss=20 --randomSeed=$seed > /dev/null 2>&1 &
- #          nohup ./ns3-dev-conga-simulation-large-optimized --ID=$1 --runMode=ECMP --StartTime=0 --EndTime=3 --FlowLaunchEndTime=0.5 --leafCount=8 --spineCount=8 --leafServerCapacity=10  --serverCount=16 --transportProt=DcTcp --cdfFileName=../../../examples/load-balance/VL2_CDF.txt --load=$Ld --asymCapacity=false --asymCapacityPoss=20 --randomSeed=$seed > /dev/null 2>&1 &
-  #         nohup ./ns3-dev-conga-simulation-large-optimized --ID=$1 --runMode=Conga --StartTime=0 --EndTime=3 --FlowLaunchEndTime=0.5 --leafCount=8 --spineCount=8 --leafServerCapacity=10  --serverCount=16 --transportProt=DcTcp --cdfFileName=../../../examples/load-balance/VL2_CDF.txt --load=$Ld --asymCapacity=false --asymCapacityPoss=20 --randomSeed=$seed > /dev/null 2>&1 &
+		tmp=${Ld:2:1}
+			# CLOVE
+			# taskset -c $((tmp-1)) nohup ./waf --run "conga-simulation-large --ID=$1 --runMode=Clove --cloveRunMode=1 --cloveDisToUncongestedPath=false --cloveFlowletTimeout=$timeout --StartTime=0 --EndTime=4 --FlowLaunchEndTime=2 --leafCount=8 --spineCount=8  --serverCount=16 --spineLeafCapacity=$spineLeafCapacity --leafServerCapacity=$leafServerCapacity --transportProt=DcTcp --cdfFileName=examples/load-balance/$CDF\_CDF.txt --load=$Ld  --asymCapacity=true --asymCapacityPoss=20 --randomSeed=$seed" > ./"$1"_"$CDF"_8x8_CloveECN_TO$timeout\_$Ld.log 2>&1 &
+			# Letflow
+			taskset -c $((tmp-1)) nohup ./waf --run "conga-simulation-large --ID=$1 --runMode=LetFlow --letFlowFlowletTimeout=$timeout --StartTime=0 --EndTime=4 --FlowLaunchEndTime=2 --leafCount=8 --spineCount=8  --serverCount=16 --spineLeafCapacity=$spineLeafCapacity --leafServerCapacity=$leafServerCapacity --transportProt=DcTcp --cdfFileName=examples/load-balance/$CDF\_CDF.txt --load=$Ld  --asymCapacity=true --asymCapacityPoss=20 --randomSeed=$seed" > ./"$1"_"$CDF"_8x8_Letflow_TO$timeout\_$Ld.log 2>&1 &
+			sleep 5
+			echo "Launching Load:${Ld} in CPU:$((tmp-1))"
         done
-    done
-done
+# done
 exit
 
