@@ -29,7 +29,7 @@ struct CloveFlowlet {
 	uint32_t groupPktNum;
 	uint32_t longFlow;
 	uint32_t neverChangePath;
-	uint32_t avgAvailWinSize;
+	// uint32_t avgAvailWinSize;
 	uint32_t numTimeouts;
 };
 
@@ -75,6 +75,9 @@ public:
 
 	void GetStats (void);
 	void GetStatsLongFlows (void);
+
+	uint32_t sumAvailWinSize;
+	uint32_t cntDecisionsDiffPath;
 
 private:
     uint32_t CalPath (uint32_t destTor);

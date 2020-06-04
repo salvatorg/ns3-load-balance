@@ -126,7 +126,7 @@ Ipv4Clove::GetPath (uint32_t flowId, Ipv4Address saddr, Ipv4Address daddr, uint3
 		flowlet.maxCntLog	= 0;
 		flowlet.groupID		= 0;
 		flowlet.neverChangePath = 1;
-		flowlet.avgAvailWinSize	= 0;
+		// flowlet.avgAvailWinSize	= 0;
 		flowlet.numTimeouts		= 0;
         flowlet.path		= Ipv4Clove::CalPath (destTor);
 		// NS_LOG_UNCOND ("Clove Flow NOT FOUND in the flow map. FlowID: "<< flowId << " selects path: " << flowlet.path<< " last seen: " << flowlet.lastSeen << ", " << Simulator::Now ());
@@ -172,11 +172,14 @@ Ipv4Clove::GetPath (uint32_t flowId, Ipv4Address saddr, Ipv4Address daddr, uint3
 			{
 				// track the size of the available window size the time that the first packet from a new flowlet goes out
 				if(flowlet.maxCntLog==0)
-					flowlet.avgAvailWinSize		+=  availableWin/1400;
+				{
+					sumAvailWinSize		+=  availableWin/1400;
+					cntDecisionsDiffPath++;
+				}
 				// Initialise
 				m_trackFlowECNs[key].second	= -1;
 				m_trackFlowECNs[key].first	= flowlet.groupID;
-				NS_LOG_DEBUG ("Inserting: FlowID: " << flowId << " ACK: " << ackNum << " New path: " << flowlet.path << " Old path: " << flowlet.old_path << " GroupID: " << flowlet.groupID << " LongFlow: " << flowlet.longFlow << " RemainingData:  " << remainingData << " AvailableWin: " << availableWin << " LogCnt: " << flowlet.maxCntLog << " AvgAvailWinSize " << flowlet.avgAvailWinSize);
+				NS_LOG_DEBUG ("Inserting: FlowID: " << flowId << " ACK: " << ackNum << " New path: " << flowlet.path << " Old path: " << flowlet.old_path << " GroupID: " << flowlet.groupID << " LongFlow: " << flowlet.longFlow << " RemainingData:  " << remainingData << " AvailableWin: " << availableWin << " LogCnt: " << flowlet.maxCntLog);
 				// Keep a counter for only the first n=9 packets
 				flowlet.maxCntLog++;
 			}
@@ -184,7 +187,7 @@ Ipv4Clove::GetPath (uint32_t flowId, Ipv4Address saddr, Ipv4Address daddr, uint3
 	}
 
 	if (Simulator::Now () - flowlet.lastSeen >= m_flowletTimeout)
-		NS_LOG_DEBUG ("\tTIMEOUT Flowlet [ " << flowId << " ]  " << Simulator::Now () << " New Path: " << flowlet.path << " GroupID: " << flowlet.groupID << " LongFlow: " << flowlet.longFlow << " " " AvailableWin: " << availableWin);
+		NS_LOG_DEBUG ("\tTIMEOUT Flowlet [ " << flowId << " ]  " << Simulator::Now () << " New Path: " << flowlet.path << " GroupID: " << flowlet.groupID << " LongFlow: " << flowlet.longFlow );
 
 	// Update the actvie time
     flowlet.lastSeen = Simulator::Now ();
@@ -424,22 +427,25 @@ Ipv4Clove::GetStats (void)
     for (std::map<uint32_t, CloveFlowlet>::iterator flowletItr = m_flowletMap.begin(); flowletItr != m_flowletMap.end (); ++flowletItr)
 	{	
 		// Flows that never ever changed path
-		if ((flowletItr->second).neverChangePath == 1) 
-			o++;
-		else
-		{	
-			// Sum uo only the windows of the flows that have a chnage on their path
-			// Sum up all the averaged of every flow sent by this host
-			w	+= (flowletItr->second).avgAvailWinSize;
-			NS_LOG_DEBUG ("Flowid " << flowletItr->first << " AVG " << (flowletItr->second).avgAvailWinSize);
-		}
+		if ((flowletItr->second).neverChangePath == 1)	o++;
+		// else
+		// {	
+		// 	// Sum uo only the windows of the flows that have a chnage on their path
+		// 	// Sum up all the averaged of every flow sent by this host
+		// 	w	+= (flowletItr->second).avgAvailWinSize;
+		// 	NS_LOG_DEBUG ("Flowid " << flowletItr->first << " AVG " << (flowletItr->second).avgAvailWinSize);
+		// }
 		// Total number of flowlet timeouts
 		t	+= (flowletItr->second).numTimeouts;
 		
 	}
 	// Average all the window size
-	w	= w/(m_flowletMap.size()-o);
-
+	if(cntDecisionsDiffPath!=0)
+	{
+		w	= sumAvailWinSize/cntDecisionsDiffPath;
+		NS_LOG_DEBUG ("sumAvailWinSize/cntDecisionsDiffPath " << sumAvailWinSize << " " << cntDecisionsDiffPath);
+	}
+	
 	NS_LOG_UNCOND ("TotalNum.Flows: " << m_flowletMap.size() << " Num.FlowsOnePath: " << o << " TotalNum.Decisions: " << t << " AverageAvailableWindowSize: " << w);
 	NS_LOG_UNCOND ("Num.Decisions: " << m_trackFlowECNgroupStats.size() << " Sum: " << unknown+bad+good+demi << " Good: " << good << " Bad: " << bad << " Demi: " << demi << " Unknown: " << unknown);
 	

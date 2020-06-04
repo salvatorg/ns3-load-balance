@@ -46,7 +46,7 @@ extern "C"
 // a marking threshold as low as 20 packets can be used for 10Gbps, we found that a more conservative marking threshold larger than 60 packets is required to avoid loss of throughput . DCTCP paper
 // we use the marking thresholds of K = 20 packets for 1Gbps and K = 65 packets for 10Gbps ports
 // #define RED_QUEUE_MARKING 65						// 10Gbps ,Clove-ECN -- 91KB
-#define RED_QUEUE_MARKING 20						// 1Gbps ,Clove-ECN, Letflow-FTO50-150 -- 28KB
+#define RED_QUEUE_MARKING 15						// 1Gbps ,Clove-ECN, Letflow-FTO50-150 -- 28KB
 // #define RED_QUEUE_MARKING 71						// 10Gbps(?), Letflow-FTO50-150, 100KB
 
 // The flow port range, each flow will be assigned a random port number within this range
@@ -453,7 +453,7 @@ void install_applications (int fromLeafId, NodeContainer servers, double request
     NS_LOG_INFO ("Install applications");
 	uint32_t longFlowsNum=0;
 	uint32_t shortFlowsNum=0;
-    for (int i = 0; i < 1; i++)//SERVER_COUNT
+    for (int i = 0; i < SERVER_COUNT; i++)//SERVER_COUNT
     {
         int fromServerIndex = fromLeafId * SERVER_COUNT + i;
 
@@ -486,7 +486,7 @@ void install_applications (int fromLeafId, NodeContainer servers, double request
 
             totalFlowSize += flowSize;
  	        source.SetAttribute ("SendSize", UintegerValue (PACKET_SIZE));
-            source.SetAttribute ("MaxBytes", UintegerValue(30000000));//flowSize
+            source.SetAttribute ("MaxBytes", UintegerValue(flowSize));//flowSize
             // source.SetAttribute ("DelayThresh", UintegerValue (applicationPauseThresh));
             // source.SetAttribute ("DelayTime", TimeValue (MicroSeconds (applicationPauseTime)));
 
@@ -505,7 +505,7 @@ void install_applications (int fromLeafId, NodeContainer servers, double request
             // NS_LOG_INFO ("\tFlow from server: " << fromServerIndex << " to server: "
             //         << destServerIndex << " on port: " << port << " with flow size: "
             //         << flowSize << " [start time: " << startTime <<"]");
-            // if(flowCount==4)break;
+            // if(flowCount==5)break;
 			
             startTime += poission_gen_interval (requestRate);
         }
@@ -1531,7 +1531,7 @@ int main (int argc, char *argv[])
     load_cdf (cdfTable, cdfFileName.c_str ());
 	NS_LOG_INFO ("Average request size: " <<  avg_cdf(cdfTable)  << " bytes\n");
 	NS_LOG_INFO ("CDF Table");
-	print_cdf (cdfTable);
+	// print_cdf (cdfTable);
 
 
 	// uint32_t period_us = avg_cdf(cdfTable) * 8 / load / TG_GOODPUT_RATIO; /* average request arrival interval (in microseconds) */
@@ -1559,7 +1559,7 @@ int main (int argc, char *argv[])
     long flowCount = 0;
     long totalFlowSize = 0;
 
-    for (int fromLeafId = 0; fromLeafId < 1; fromLeafId ++)//LEAF_COUNT
+    for (int fromLeafId = 0; fromLeafId < LEAF_COUNT; fromLeafId ++)//LEAF_COUNT
     {
         install_applications(fromLeafId, servers, requestRate, cdfTable, flowCount, totalFlowSize, SERVER_COUNT, LEAF_COUNT, START_TIME, END_TIME, FLOW_LAUNCH_END_TIME, applicationPauseThresh, applicationPauseTime);
     }
@@ -1825,14 +1825,14 @@ int main (int argc, char *argv[])
     if (runMode == Clove)
     {
 		NS_LOG_INFO ("### All Flows ###");
-		for (int k = 0; k < 1; k++)//SERVER_COUNT * LEAF_COUNT
+		for (int k = 0; k < SERVER_COUNT * LEAF_COUNT; k++)//SERVER_COUNT * LEAF_COUNT
 		{
 			NS_LOG_INFO ("[Server " << k << "]");
 			Ptr<Ipv4Clove> clove = servers.Get (k)->GetObject<Ipv4Clove> ();
 			clove->GetStats();
  		}
 		NS_LOG_INFO ("### Long Flows ###");
-		for (int k = 0; k < 1; k++)//SERVER_COUNT * LEAF_COUNT
+		for (int k = 0; k < SERVER_COUNT * LEAF_COUNT; k++)//SERVER_COUNT * LEAF_COUNT
 		{
 			NS_LOG_INFO ("[Server " << k << "]");
 			Ptr<Ipv4Clove> clove = servers.Get (k)->GetObject<Ipv4Clove> ();
