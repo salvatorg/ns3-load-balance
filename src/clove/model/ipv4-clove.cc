@@ -107,6 +107,9 @@ Ipv4Clove::GetPath (uint32_t flowId, Ipv4Address saddr, Ipv4Address daddr, uint3
 		return 0;
     }
 
+	// Avoid to count the call of this process in the handshake
+	if (ackNum!=0 && remainingData!=0 && availableWin!=0)	numPacketsSent++;
+
     struct CloveFlowlet flowlet;
 	uint32_t old_path;
 
@@ -123,6 +126,7 @@ Ipv4Clove::GetPath (uint32_t flowId, Ipv4Address saddr, Ipv4Address daddr, uint3
     {
 		flowlet.old_path	= flowlet.path;
 		flowlet.longFlow	= 0;
+		flowlet.shortFlow	= 0;
 		flowlet.maxCntLog	= 0;
 		flowlet.groupID		= 0;
 		flowlet.neverChangePath = 1;
@@ -156,11 +160,13 @@ Ipv4Clove::GetPath (uint32_t flowId, Ipv4Address saddr, Ipv4Address daddr, uint3
 
 	// salvatorg
 	// Tag the flow if it is long, so if we ever see remainingData >= 10000000 
-	if(remainingData >= 10000000)	flowlet.longFlow	= 1;
+	if(remainingData >= 10000000 && flowlet.longFlow==0)	flowlet.longFlow	= 1;
+	// Tag the flow if it is short, so if we ever see remainingData <= 100000 and havent set the tag
+	if(remainingData <= 100000 && flowlet.shortFlow==0)	flowlet.shortFlow	= 1;
 
 	// salvatorg
-	// Track v1 only the first n=9 packets for the ECN bit from the time of timeout, iff the path has changed
-	if( (Simulator::Now () - flowlet.lastSeen <= m_flowletTimeout) && (flowlet.maxCntLog <= 9) && (flowlet.old_path!=flowlet.path))
+	// Track v1 only the first n=10 packets for the ECN bit from the time of timeout, iff the path has changed
+	if( (Simulator::Now () - flowlet.lastSeen <= m_flowletTimeout) && (flowlet.maxCntLog < 10) && (flowlet.old_path!=flowlet.path))
 	{
 		// Skip the handshake
 		if( ackNum != 0 )
@@ -180,7 +186,7 @@ Ipv4Clove::GetPath (uint32_t flowId, Ipv4Address saddr, Ipv4Address daddr, uint3
 				m_trackFlowECNs[key].second	= -1;
 				m_trackFlowECNs[key].first	= flowlet.groupID;
 				NS_LOG_DEBUG ("Inserting: FlowID: " << flowId << " ACK: " << ackNum << " New path: " << flowlet.path << " Old path: " << flowlet.old_path << " GroupID: " << flowlet.groupID << " LongFlow: " << flowlet.longFlow << " RemainingData:  " << remainingData << " AvailableWin: " << availableWin << " LogCnt: " << flowlet.maxCntLog);
-				// Keep a counter for only the first n=9 packets
+				// Keep a counter for only the first n=10 packets
 				flowlet.maxCntLog++;
 			}
 		}
@@ -263,7 +269,7 @@ Ipv4Clove::CalPath (uint32_t destTor)
 void
 Ipv4Clove::FlowRecv (uint32_t path, Ipv4Address daddr, bool withECN, uint32_t flowId, int ackNum)
 {
-
+	numAckPackets++;
 	// salvatorg
 	// Traceing v1
 	// Avoid handshake (hanshake must not have ECN bits anyway)
@@ -276,10 +282,10 @@ Ipv4Clove::FlowRecv (uint32_t path, Ipv4Address daddr, bool withECN, uint32_t fl
 		{	//pair<flowID,GroupID>
 			std::pair<uint32_t, uint32_t> kk = std::make_pair (flowId, m_trackFlowECNs[k].first);
 			// Avoid multiple updates on the same entry
-			// if(m_trackFlowECNs[k].second == -1)
-			// {
+			if(m_trackFlowECNs[k].second == -1)
+			{
 				NS_LOG_DEBUG ("Updating FlowID: " << flowId << " ackNum: " << ackNum << " GroupID: " << m_trackFlowECNs[k].first << " ECN: " << withECN );
-				// m_trackFlowECNs[k].second	= withECN ? 1 : 0;
+				m_trackFlowECNs[k].second	= withECN ? 1 : 0;
 
 				if(withECN)
 					m_trackFlowECNgroupStats[kk].ECN++;
@@ -289,8 +295,8 @@ Ipv4Clove::FlowRecv (uint32_t path, Ipv4Address daddr, bool withECN, uint32_t fl
 				// 	m_trackFlowECNgroupStats[kk].unknown++;
 
 				// Free some space
-				m_trackFlowECNs.erase(Itr);
-			// }
+				//m_trackFlowECNs.erase(Itr);
+			}
 		}
 		// else
 		// 	NS_LOG_DEBUG ("DID NOT FOUND FlowID: " << flowId << " " << ackNum << " " << withECN );
@@ -384,29 +390,58 @@ Ipv4Clove::FlowRecv (uint32_t path, Ipv4Address daddr, bool withECN, uint32_t fl
     }
 }
 
-void 
-Ipv4Clove::GetStats (void)
-{
+// void
+// Ipv4Clove::GetDistrStats (void)
+// {
 
-	// In the m_trackFlowECNs there are only the <flowId,ack> that has not received an acknowledgment.
+
+// }
+
+
+void
+Ipv4Clove::CreateGroupStats (void)
+{
 	// <pair<flowID,ackNum>, pair<GroupID,ecnSeen>>
 	for(std::map<std::pair<uint32_t, int>, std::pair<uint32_t, int> >::iterator iter1 = m_trackFlowECNs.begin(); iter1 != m_trackFlowECNs.end(); ++iter1)
 	{
 		// NS_LOG_UNCOND ("FlowID: " << (iter1->first).first << " ackNum: " << (iter1->first).second << " GroupID: "<< (iter1->second).first << " ECN: " << (iter1->second).second);
+
+		// The unknown label means that we have tracked some packets going out with a spesific sequence number 
+		// but we never saw ACK back (maybe its because of cumulative ACKs)
 		if((iter1->second).second == -1)
+			// <pair<flowID,GroupID>, <GroupStats>>
+			// i.e m_trackFlowECNgroupStats[flowID,GroupID].unknown++
 			m_trackFlowECNgroupStats[std::make_pair ((iter1->first).first, (iter1->second).first)].unknown++;
 		else
-			NS_LOG_ERROR ("Didnt expect to see ECN bit in the m_trackFlowECNs");
+			// i.e m_trackFlowECNgroupStats[flowID,GroupID].ACKsECNs += vector<pair<ackNum,ecnSeen>>
+			(m_trackFlowECNgroupStats[std::make_pair ((iter1->first).first, (iter1->second).first)].ACKsECNs).push_back(std::make_pair ((iter1->first).second,(iter1->second).second));
 	}
+
+	for(std::map<std::pair<uint32_t, uint32_t>, GroupStats >::iterator iter2 = m_trackFlowECNgroupStats.begin(); iter2 != m_trackFlowECNgroupStats.end(); ++iter2)
+		std::sort ( ((iter2->second).ACKsECNs).begin(), ((iter2->second).ACKsECNs).end() ); 
+}
+
+
+void 
+Ipv4Clove::GetStats ()
+{
+
+	CreateGroupStats();
 
 	uint32_t good=0;
 	uint32_t bad=0;
 	uint32_t unknown=0;
 	uint32_t demi=0;
-	//<pair<flowID,GroupID>, pair<GroupStats>>
+
+	std::vector<uint32_t> ECNdistrVec(10,0);
+	std::vector<uint32_t> firstECNdistrVec(10,0);
+	uint32_t numOf10pktsLogged = 0;
+	//<pair<flowID,GroupID>, <GroupStats>>
 	for(std::map<std::pair<uint32_t, uint32_t>, GroupStats >::iterator iter2 = m_trackFlowECNgroupStats.begin(); iter2 != m_trackFlowECNgroupStats.end(); ++iter2)
 	{
 		// NS_LOG_UNCOND ("FlowID: " << (iter2->first).first << " GroupID: " << (iter2->first).second << " ECNs: "<< (iter2->second).ECN << " noECNs: " << (iter2->second).noECN << " Unknown: " << (iter2->second).unknown );
+		// Sum up everything, all the stas from all the flows
+		// If the unknown counter is >2 then dont take into account this flowlet stas
 		if((iter2->second).unknown>2)
 			unknown++;
 		else
@@ -418,6 +453,16 @@ Ipv4Clove::GetStats (void)
 			else
 				demi++;
 		}
+		// NS_LOG_UNCOND ( "FlowID: " << (iter2->first).first << " GroupID: " << (iter2->first).second << "\n" << ((iter2->second).ACKsECNs).size() );
+		// for(int i = 0; i < ((iter2->second).ACKsECNs).size(); i++ )	NS_LOG_UNCOND ( ((iter2->second).ACKsECNs[i]).first << " " << ((iter2->second).ACKsECNs[i]).second );
+
+		// Skip if we havent logged 10pkts
+		if( ((iter2->second).ACKsECNs).size() == 10 )
+		{
+			for( uint32_t i = 0; i < 10; i++ )	ECNdistrVec[i] += ((iter2->second).ACKsECNs[i]).second;
+			for( uint32_t i = 0; i < 10; i++ )	{ if(((iter2->second).ACKsECNs[i]).second == 1) { firstECNdistrVec[i] += 1; break; } } 
+			numOf10pktsLogged++;
+		}
 	}
 
 	// NS_LOG_UNCOND ("### All Flows ###");
@@ -428,60 +473,45 @@ Ipv4Clove::GetStats (void)
 	{	
 		// Flows that never ever changed path
 		if ((flowletItr->second).neverChangePath == 1)	o++;
-		// else
-		// {	
-		// 	// Sum uo only the windows of the flows that have a chnage on their path
-		// 	// Sum up all the averaged of every flow sent by this host
-		// 	w	+= (flowletItr->second).avgAvailWinSize;
-		// 	NS_LOG_DEBUG ("Flowid " << flowletItr->first << " AVG " << (flowletItr->second).avgAvailWinSize);
-		// }
 		// Total number of flowlet timeouts
 		t	+= (flowletItr->second).numTimeouts;
-		
 	}
-	// Average all the window size
-	if(cntDecisionsDiffPath!=0)
-	{
-		w	= sumAvailWinSize/cntDecisionsDiffPath;
-		NS_LOG_DEBUG ("sumAvailWinSize/cntDecisionsDiffPath " << sumAvailWinSize << " " << cntDecisionsDiffPath);
-	}
+	// Average all the window sizeσ
+	w	= (cntDecisionsDiffPath!=0) ? sumAvailWinSize/cntDecisionsDiffPath : 0;
+	NS_LOG_DEBUG ("sumAvailWinSize/cntDecisionsDiffPath " << sumAvailWinSize << " " << cntDecisionsDiffPath);
+
 	
-	NS_LOG_UNCOND ("TotalNum.Flows: " << m_flowletMap.size() << " Num.FlowsOnePath: " << o << " TotalNum.Decisions: " << t << " AverageAvailableWindowSize: " << w);
-	NS_LOG_UNCOND ("Num.Decisions: " << m_trackFlowECNgroupStats.size() << " Sum: " << unknown+bad+good+demi << " Good: " << good << " Bad: " << bad << " Demi: " << demi << " Unknown: " << unknown);
-	
+	NS_LOG_UNCOND ("TotalNum.Flows: " << m_flowletMap.size() << " Num.FlowsOnePath: " << o << " TotalNum.Decisions: " << t << " AverageAvailableWindowSize: " << w << " numPacketsSent: " << numPacketsSent << " numAckPackets " << numAckPackets);
+	NS_LOG_UNCOND ("Num.Decisions: " << m_trackFlowECNgroupStats.size() << " Of10pktsLogged: " << numOf10pktsLogged << " Sum: " << unknown+bad+good+demi << " Good: " << good << " Bad: " << bad << " Demi: " << demi << " Unknown: " << unknown);
+
+	// for( uint32_t i = 0; i < 10; i++ )	NS_LOG_UNCOND (" " << ECNdistrVec[i] );
+	NS_LOG_UNCOND ("Distribution of ECNs in the 10pkts logs flowlets");
+	NS_LOG_UNCOND (ECNdistrVec[0] << " " << ECNdistrVec[1] << " " << ECNdistrVec[2] << " " << ECNdistrVec[3] << " " << ECNdistrVec[4] << " " << ECNdistrVec[5] << " " << ECNdistrVec[6] << " " << ECNdistrVec[7] << " " << ECNdistrVec[8] << " " << ECNdistrVec[9] );
+	NS_LOG_UNCOND ("Distribution of the first occurance of ECN in the 10pkts logs flowlets");
+	NS_LOG_UNCOND (firstECNdistrVec[0] << " " << firstECNdistrVec[1] << " " << firstECNdistrVec[2] << " " << firstECNdistrVec[3] << " " << firstECNdistrVec[4] << " " << firstECNdistrVec[5] << " " << firstECNdistrVec[6] << " " << firstECNdistrVec[7] << " " << firstECNdistrVec[8] << " " << firstECNdistrVec[9] );
 }
 
 void 
 Ipv4Clove::GetStatsLongFlows (void)
 {
 
-	// std::map<std::pair<uint32_t, int>, std::pair<uint32_t, int> > stat1 = clove->m_trackFlowECNs;
-	// std::map<std::pair<uint32_t, uint32_t>, GroupStats > stat2 = clove->m_trackFlowECNgroupStats;
-
-	// <pair<flowID,ackNum>, pair<GroupID,ecnSeen>>
-	for(std::map<std::pair<uint32_t, int>, std::pair<uint32_t, int> >::iterator iter1 = m_trackFlowECNs.begin(); iter1 != m_trackFlowECNs.end(); ++iter1)
-	{
-		// NS_LOG_UNCOND ("FlowID: " << (iter1->first).first << " ackNum: " << (iter1->first).second << " GroupID: "<< (iter1->second).first << " ECN: " << (iter1->second).second);
-		std::map<uint32_t, CloveFlowlet>::iterator flowletItr = m_flowletMap.find ((iter1->first).first);
-		// If the flow is in the flow table, get it
-		if (flowletItr != m_flowletMap.end ())
-		{
-			struct CloveFlowlet flowlet = flowletItr->second;
-			if((iter1->second).second == -1)
-				m_trackFlowECNgroupStats[std::make_pair ((iter1->first).first, (iter1->second).first)].unknown++;
-			else
-				NS_LOG_ERROR ("Didnt expect to see ECN bit in the m_trackFlowECNs");
-		}
-	}
+	CreateGroupStats();
 
 	uint32_t good=0;
 	uint32_t bad=0;
 	uint32_t unknown=0;
 	uint32_t demi=0;
 	uint32_t numDecis=0;
+
+	std::vector<uint32_t> ECNdistrVec(10,0);
+	std::vector<uint32_t> firstECNdistrVec(10,0);
+	uint32_t numOf10pktsLogged = 0;
+	//<pair<flowID,GroupID>, <GroupStats>>
 	for(std::map<std::pair<uint32_t, uint32_t>, GroupStats >::iterator iter2 = m_trackFlowECNgroupStats.begin(); iter2 != m_trackFlowECNgroupStats.end(); ++iter2)
 	{
 		// NS_LOG_UNCOND ("FlowID: " << (iter2->first).first << " GroupID: " << (iter2->first).second << " ECNs: "<< (iter2->second).ECN << " noECNs: " << (iter2->second).noECN << " Unknown: " << (iter2->second).unknown );
+		// Sum up everything, all the stas from all the flows
+		// If the unknown counter is >2 then dont take into account this flowlet stas
 		std::map<uint32_t, CloveFlowlet>::iterator flowletItr = m_flowletMap.find ((iter2->first).first);
 		// If the flow is in the flow table, get it
 		if (flowletItr != m_flowletMap.end ())
@@ -501,25 +531,130 @@ Ipv4Clove::GetStatsLongFlows (void)
 						demi++;
 				}
 				numDecis++;
+			// NS_LOG_UNCOND ( "FlowID: " << (iter2->first).first << " GroupID: " << (iter2->first).second << "\n" << ((iter2->second).ACKsECNs).size() );
+			// for(int i = 0; i < ((iter2->second).ACKsECNs).size(); i++ )	NS_LOG_UNCOND ( ((iter2->second).ACKsECNs[i]).first << " " << ((iter2->second).ACKsECNs[i]).second );
+
+			// Skip if we havent logged 10pkts
+			if( ((iter2->second).ACKsECNs).size() == 10 )
+			{
+				for( uint32_t i = 0; i < 10; i++ )	ECNdistrVec[i] += ((iter2->second).ACKsECNs[i]).second;
+				for( uint32_t i = 0; i < 10; i++ )	{ if(((iter2->second).ACKsECNs[i]).second == 1) { firstECNdistrVec[i] += 1; break; } } 
+				numOf10pktsLogged++;
 			}
 		}
-
 	}
+
+	// NS_LOG_UNCOND ("### All Flows ###");
 	uint32_t o=0;
-	uint32_t l=0;
-    for(std::map<uint32_t, CloveFlowlet>::iterator flowletItr = m_flowletMap.begin(); flowletItr != m_flowletMap.end (); ++flowletItr)
-		if((flowletItr->second).longFlow == 1) 
+	uint32_t t=0;
+	uint32_t w=0;
+    for (std::map<uint32_t, CloveFlowlet>::iterator flowletItr = m_flowletMap.begin(); flowletItr != m_flowletMap.end (); ++flowletItr)
+	{	
+		if((flowletItr->second).longFlow==1)
 		{
-			l++;
-			if((flowletItr->second).neverChangePath == 1)	o++;
+			// Flows that never ever changed path
+			if ((flowletItr->second).neverChangePath == 1)	o++;
+			// Total number of flowlet timeouts
+			t	+= (flowletItr->second).numTimeouts;
 		}
-	NS_LOG_UNCOND ("TotalNum.LongFlows: " << l << " Num.LongFlowsOnePath: " << o);
-	//  NS_LOG_UNCOND ("### Long Flows ###");
-	NS_LOG_UNCOND ("Num.Decisions: " << numDecis << " Sum: " << unknown+bad+good+demi << " Good: " << good << " Bad: " << bad << " Demi: " << demi << " Unknown: " << unknown);
+	}
+	// Average all the window sizeσ
+	w	= (cntDecisionsDiffPath!=0) ? sumAvailWinSize/cntDecisionsDiffPath : 0;
+	NS_LOG_DEBUG ("sumAvailWinSize/cntDecisionsDiffPath " << sumAvailWinSize << " " << cntDecisionsDiffPath);
+
+	
+	NS_LOG_UNCOND ("TotalNum.Flows: " << m_flowletMap.size() << " Num.FlowsOnePath: " << o << " TotalNum.Decisions: " << t << " AverageAvailableWindowSize: " << w << " numPacketsSent: " << numPacketsSent << " numAckPackets " << numAckPackets);
+	NS_LOG_UNCOND ("Num.Decisions: " << numDecis << " Of10pktsLogged: " << numOf10pktsLogged << " Sum: " << unknown+bad+good+demi << " Good: " << good << " Bad: " << bad << " Demi: " << demi << " Unknown: " << unknown);
+
+	// for( uint32_t i = 0; i < 10; i++ )	NS_LOG_UNCOND (" " << ECNdistrVec[i] );
+	NS_LOG_UNCOND ("Distribution of ECNs in the 10pkts logs flowlets");
+	NS_LOG_UNCOND (ECNdistrVec[0] << " " << ECNdistrVec[1] << " " << ECNdistrVec[2] << " " << ECNdistrVec[3] << " " << ECNdistrVec[4] << " " << ECNdistrVec[5] << " " << ECNdistrVec[6] << " " << ECNdistrVec[7] << " " << ECNdistrVec[8] << " " << ECNdistrVec[9] );
+	NS_LOG_UNCOND ("Distribution of the first occurance of ECN in the 10pkts logs flowlets");
+	NS_LOG_UNCOND (firstECNdistrVec[0] << " " << firstECNdistrVec[1] << " " << firstECNdistrVec[2] << " " << firstECNdistrVec[3] << " " << firstECNdistrVec[4] << " " << firstECNdistrVec[5] << " " << firstECNdistrVec[6] << " " << firstECNdistrVec[7] << " " << firstECNdistrVec[8] << " " << firstECNdistrVec[9] );
 }
 
 
+void 
+Ipv4Clove::GetStatsShortFlows (void)
+{
 
+	CreateGroupStats();
 
+	uint32_t good=0;
+	uint32_t bad=0;
+	uint32_t unknown=0;
+	uint32_t demi=0;
+	uint32_t numDecis=0;
+
+	std::vector<uint32_t> ECNdistrVec(10,0);
+	std::vector<uint32_t> firstECNdistrVec(10,0);
+	uint32_t numOf10pktsLogged = 0;
+	//<pair<flowID,GroupID>, <GroupStats>>
+	for(std::map<std::pair<uint32_t, uint32_t>, GroupStats >::iterator iter2 = m_trackFlowECNgroupStats.begin(); iter2 != m_trackFlowECNgroupStats.end(); ++iter2)
+	{
+		// NS_LOG_UNCOND ("FlowID: " << (iter2->first).first << " GroupID: " << (iter2->first).second << " ECNs: "<< (iter2->second).ECN << " noECNs: " << (iter2->second).noECN << " Unknown: " << (iter2->second).unknown );
+		// Sum up everything, all the stas from all the flows
+		// If the unknown counter is >2 then dont take into account this flowlet stas
+		std::map<uint32_t, CloveFlowlet>::iterator flowletItr = m_flowletMap.find ((iter2->first).first);
+		// If the flow is in the flow table, get it
+		if (flowletItr != m_flowletMap.end ())
+		{
+			struct CloveFlowlet flowlet = flowletItr->second;
+			if(flowlet.shortFlow==1)
+			{
+				if((iter2->second).unknown>2)
+					unknown++;
+				else
+				{
+					if((iter2->second).ECN>=( ((iter2->second).ECN + (iter2->second).noECN))*0.75 )
+						bad++;
+					else if((iter2->second).noECN>=( ((iter2->second).ECN + (iter2->second).noECN))*0.75 )
+						good++;
+					else
+						demi++;
+				}
+				numDecis++;
+			// NS_LOG_UNCOND ( "FlowID: " << (iter2->first).first << " GroupID: " << (iter2->first).second << "\n" << ((iter2->second).ACKsECNs).size() );
+			// for(int i = 0; i < ((iter2->second).ACKsECNs).size(); i++ )	NS_LOG_UNCOND ( ((iter2->second).ACKsECNs[i]).first << " " << ((iter2->second).ACKsECNs[i]).second );
+
+			// Skip if we havent logged 10pkts
+			if( ((iter2->second).ACKsECNs).size() == 10 )
+			{
+				for( uint32_t i = 0; i < 10; i++ )	ECNdistrVec[i] += ((iter2->second).ACKsECNs[i]).second;
+				for( uint32_t i = 0; i < 10; i++ )	{ if(((iter2->second).ACKsECNs[i]).second == 1) { firstECNdistrVec[i] += 1; break; } } 
+				numOf10pktsLogged++;
+			}
+		}
+	}
+
+	// NS_LOG_UNCOND ("### All Flows ###");
+	uint32_t o=0;
+	uint32_t t=0;
+	uint32_t w=0;
+    for (std::map<uint32_t, CloveFlowlet>::iterator flowletItr = m_flowletMap.begin(); flowletItr != m_flowletMap.end (); ++flowletItr)
+	{
+		if((flowletItr->second).shortFlow==1)
+		{
+			// Flows that never ever changed path
+			if ((flowletItr->second).neverChangePath == 1)	o++;
+			// Total number of flowlet timeouts
+			t	+= (flowletItr->second).numTimeouts;
+		}
+	}
+	// Average all the window sizeσ
+	w	= (cntDecisionsDiffPath!=0) ? sumAvailWinSize/cntDecisionsDiffPath : 0;
+	NS_LOG_DEBUG ("sumAvailWinSize/cntDecisionsDiffPath " << sumAvailWinSize << " " << cntDecisionsDiffPath);
+
+	
+	NS_LOG_UNCOND ("TotalNum.Flows: " << m_flowletMap.size() << " Num.FlowsOnePath: " << o << " TotalNum.Decisions: " << t << " AverageAvailableWindowSize: " << w << " numPacketsSent: " << numPacketsSent << " numAckPackets " << numAckPackets);
+	NS_LOG_UNCOND ("Num.Decisions: " << numDecis << " Of10pktsLogged: " << numOf10pktsLogged << " Sum: " << unknown+bad+good+demi << " Good: " << good << " Bad: " << bad << " Demi: " << demi << " Unknown: " << unknown);
+
+	// for( uint32_t i = 0; i < 10; i++ )	NS_LOG_UNCOND (" " << ECNdistrVec[i] );
+	NS_LOG_UNCOND ("Distribution of ECNs in the 10pkts logs flowlets");
+	NS_LOG_UNCOND (ECNdistrVec[0] << " " << ECNdistrVec[1] << " " << ECNdistrVec[2] << " " << ECNdistrVec[3] << " " << ECNdistrVec[4] << " " << ECNdistrVec[5] << " " << ECNdistrVec[6] << " " << ECNdistrVec[7] << " " << ECNdistrVec[8] << " " << ECNdistrVec[9] );
+	NS_LOG_UNCOND ("Distribution of the first occurance of ECN in the 10pkts logs flowlets");
+	NS_LOG_UNCOND (firstECNdistrVec[0] << " " << firstECNdistrVec[1] << " " << firstECNdistrVec[2] << " " << firstECNdistrVec[3] << " " << firstECNdistrVec[4] << " " << firstECNdistrVec[5] << " " << firstECNdistrVec[6] << " " << firstECNdistrVec[7] << " " << firstECNdistrVec[8] << " " << firstECNdistrVec[9] );
+
+}
 
 }

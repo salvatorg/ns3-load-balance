@@ -450,13 +450,14 @@ T rand_range (T min, T max)
 void install_applications (int fromLeafId, NodeContainer servers, double requestRate, struct cdf_table *cdfTable,
         long &flowCount, long &totalFlowSize, int SERVER_COUNT, int LEAF_COUNT, double START_TIME, double END_TIME, double FLOW_LAUNCH_END_TIME, uint32_t applicationPauseThresh, uint32_t applicationPauseTime)
 {
-    NS_LOG_INFO ("Install applications");
+    NS_LOG_INFO ("Install applications (requestRate):" << requestRate);
 	uint32_t longFlowsNum=0;
 	uint32_t shortFlowsNum=0;
+	uint64_t totalBytes=0;
     for (int i = 0; i < SERVER_COUNT; i++)//SERVER_COUNT
     {
         int fromServerIndex = fromLeafId * SERVER_COUNT + i;
-
+		double tmp;
         double startTime = START_TIME + poission_gen_interval (requestRate);
         while (startTime < FLOW_LAUNCH_END_TIME)
         {
@@ -484,6 +485,7 @@ void install_applications (int fromLeafId, NodeContainer servers, double request
 			else
 				shortFlowsNum++;
 
+			totalBytes += flowSize;
             totalFlowSize += flowSize;
  	        source.SetAttribute ("SendSize", UintegerValue (PACKET_SIZE));
             source.SetAttribute ("MaxBytes", UintegerValue(flowSize));//flowSize
@@ -506,13 +508,15 @@ void install_applications (int fromLeafId, NodeContainer servers, double request
             //         << destServerIndex << " on port: " << port << " with flow size: "
             //         << flowSize << " [start time: " << startTime <<"]");
             // if(flowCount==5)break;
-			
-            startTime += poission_gen_interval (requestRate);
+			tmp = poission_gen_interval (requestRate);
+            startTime += tmp;
+			// NS_LOG_INFO (tmp);
         }
     }
-	NS_LOG_INFO ("\tTotal number of flows\t\t: " << flowCount);
-	NS_LOG_INFO ("\tTotal number of long flows\t: " << longFlowsNum);
-	NS_LOG_INFO ("\tTotal number of short flows\t: " << shortFlowsNum);
+	NS_LOG_INFO ("\tTotal Bytes to be sent\t: " << totalBytes*1e-9 << " GBytes " << " ( " << (totalBytes*8*1e-9) << " Gbits )"); ///(FLOW_LAUNCH_END_TIME-START_TIME)
+	NS_LOG_INFO ("\tNumber of long flows\t: " << longFlowsNum);
+	NS_LOG_INFO ("\tNumber of short flows\t: " << shortFlowsNum);
+	NS_LOG_INFO ("\tNumber of flows from the pod\t: " << longFlowsNum+shortFlowsNum);
 
 }
 
@@ -1564,7 +1568,7 @@ int main (int argc, char *argv[])
         install_applications(fromLeafId, servers, requestRate, cdfTable, flowCount, totalFlowSize, SERVER_COUNT, LEAF_COUNT, START_TIME, END_TIME, FLOW_LAUNCH_END_TIME, applicationPauseThresh, applicationPauseTime);
     }
 
-    NS_LOG_INFO ("Total Number of flows: " << flowCount);
+    NS_LOG_INFO ("Total Number of flows: " <<  flowCount);
     NS_LOG_INFO ("Total flow size " << totalFlowSize << " Bytes");
     NS_LOG_INFO ("Average flow size: " << static_cast<double> (totalFlowSize) / flowCount);
 
@@ -1831,13 +1835,13 @@ int main (int argc, char *argv[])
 			Ptr<Ipv4Clove> clove = servers.Get (k)->GetObject<Ipv4Clove> ();
 			clove->GetStats();
  		}
-		NS_LOG_INFO ("### Long Flows ###");
-		for (int k = 0; k < SERVER_COUNT * LEAF_COUNT; k++)//SERVER_COUNT * LEAF_COUNT
-		{
-			NS_LOG_INFO ("[Server " << k << "]");
-			Ptr<Ipv4Clove> clove = servers.Get (k)->GetObject<Ipv4Clove> ();
-			clove->GetStatsLongFlows();
-		}
+		// NS_LOG_INFO ("### Long Flows ###");
+		// for (int k = 0; k < SERVER_COUNT * LEAF_COUNT; k++)//SERVER_COUNT * LEAF_COUNT
+		// {
+		// 	NS_LOG_INFO ("[Server " << k << "]");
+		// 	Ptr<Ipv4Clove> clove = servers.Get (k)->GetObject<Ipv4Clove> ();
+		// 	clove->GetStatsLongFlows();
+		// }
 	}
 
 	NS_LOG_INFO (flowMonitorFilename.str ());

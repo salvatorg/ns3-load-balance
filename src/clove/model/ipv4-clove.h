@@ -12,6 +12,7 @@
 #include <vector>
 #include <map>
 #include <utility>
+#include <algorithm>
 
 #define CLOVE_RUNMODE_EDGE_FLOWLET 0
 #define CLOVE_RUNMODE_ECN 1
@@ -27,7 +28,8 @@ struct CloveFlowlet {
     uint32_t old_path;
 	uint32_t groupID;
 	uint32_t groupPktNum;
-	uint32_t longFlow;
+	uint32_t longFlow;		// >10Mb
+	uint32_t shortFlow;		// <100KB
 	uint32_t neverChangePath;
 	// uint32_t avgAvailWinSize;
 	uint32_t numTimeouts;
@@ -37,6 +39,8 @@ struct GroupStats {
 	uint32_t ECN;
 	uint32_t noECN;
 	uint32_t unknown;
+	// vector<pair<ackNum,ecnSeen>>
+	std::vector< std::pair<uint32_t, int> > ACKsECNs;
 };
 
 class Ipv4Clove : public Object {
@@ -66,7 +70,7 @@ public:
 	// salvatorg
 	// <pair<flowID,ackNum>, pair<GroupID,ecnSeen>>
 	std::map<std::pair<uint32_t, int>, std::pair<uint32_t, int> > m_trackFlowECNs;
-	// <pair<flowID,GroupID>, pair<GroupStats>>
+	// <pair<flowID,GroupID>, <GroupStats>>
 	std::map<std::pair<uint32_t, uint32_t>, GroupStats > m_trackFlowECNgroupStats;
 	// <pair<flowID,ackNum>, groupID>
 	std::map<std::pair<uint32_t, int>, uint32_t> m_trackFlowletGroups;
@@ -75,9 +79,13 @@ public:
 
 	void GetStats (void);
 	void GetStatsLongFlows (void);
+	void CreateGroupStats (void);
 
 	uint32_t sumAvailWinSize;
 	uint32_t cntDecisionsDiffPath;
+
+	uint32_t numPacketsSent;
+	uint32_t numAckPackets;
 
 private:
     uint32_t CalPath (uint32_t destTor);

@@ -204,15 +204,15 @@ void CheckQueueDiscSize (Ptr<QueueDisc> queue, uint spine, uint intf)
 }
 
 
-void CheckQueueSize (uint32_t )
-{
-    uint32_t qSize = queueDiscs.Get(uplink_idx)->GetNBytes();;
-	// if (qSize==0) NS_LOG_UNCOND("QueueDisc " << spine << " " << intf );
-    // queuediscDataset[spine][intf].Add (Simulator::Now ().GetSeconds (), qSize);
-	// queuediscDataset[spine][intf].Add (Simulator::Now ().GetSeconds (), qSize);
-	NS_LOG_UNCOND("QueueDisc " << spine << " " << intf );
-    Simulator::Schedule (Seconds (0.00001), &CheckQueueDiscSize, queue, spine, intf); // 10us
-}
+// void CheckQueueSize (uint32_t )
+// {
+//     uint32_t qSize = queueDiscs.Get(uplink_idx)->GetNBytes();;
+// 	// if (qSize==0) NS_LOG_UNCOND("QueueDisc " << spine << " " << intf );
+//     // queuediscDataset[spine][intf].Add (Simulator::Now ().GetSeconds (), qSize);
+// 	// queuediscDataset[spine][intf].Add (Simulator::Now ().GetSeconds (), qSize);
+// 	NS_LOG_UNCOND("QueueDisc " << spine << " " << intf );
+//     Simulator::Schedule (Seconds (0.00001), &CheckQueueDiscSize, queue, spine, intf); // 10us
+// }
 
 void CloveQueuesTrace ()
 {

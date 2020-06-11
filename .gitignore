@@ -2,3 +2,5 @@
 *.pyc
 .waf*
 .lock*
+a.out
+**/test_ii
