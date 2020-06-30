@@ -90,6 +90,25 @@ Ipv4Clove::AddAvailPath (uint32_t destTor, uint32_t path)
     m_pathWeight[key] = 1;
 }
 
+std::vector<uint32_t>
+Ipv4Clove::GetAvailPath (Ipv4Address daddr)
+{
+    std::vector<uint32_t> emptyVector;
+    uint32_t destTor = 0;
+    if (!Ipv4Clove::FindTorId (daddr, destTor))
+    {
+        NS_LOG_ERROR ("Cannot find dest tor id based on the given dest address");
+        return emptyVector;
+    }
+
+    std::map<uint32_t, std::vector<uint32_t> >::iterator itr = m_availablePath.find (destTor);
+    if (itr == m_availablePath.end ())
+    {
+        return emptyVector;
+    }
+    return itr->second;
+}
+
 uint32_t
 Ipv4Clove::GetPath (uint32_t flowId, Ipv4Address saddr, Ipv4Address daddr, uint32_t ackNum, uint32_t remainingData, uint32_t availableWin)
 {
@@ -229,7 +248,14 @@ Ipv4Clove::CalPath (uint32_t destTor)
     std::vector<uint32_t> paths = itr->second;
     if (m_runMode == CLOVE_RUNMODE_EDGE_FLOWLET)
     {
-        return paths[rand() % paths.size ()];
+		// salvatorg 
+		// Check for out of bound index
+		uint32_t idx	= 0;
+		do{
+			idx	= rand() % paths.size ();
+		}while(idx>=paths.size ());
+
+        return paths[idx];
     }
     else if (m_runMode == CLOVE_RUNMODE_ECN)
     {
@@ -433,7 +459,9 @@ Ipv4Clove::GetStats ()
 	uint32_t unknown=0;
 	uint32_t demi=0;
 
+	// Distribution vector of 10 first ECNs
 	std::vector<uint32_t> ECNdistrVec(10,0);
+	// Distribution vector of the 1st occurance of ECN in the first 10 ECNs
 	std::vector<uint32_t> firstECNdistrVec(10,0);
 	uint32_t numOf10pktsLogged = 0;
 	//<pair<flowID,GroupID>, <GroupStats>>
@@ -531,24 +559,24 @@ Ipv4Clove::GetStatsLongFlows (void)
 						demi++;
 				}
 				numDecis++;
-			// NS_LOG_UNCOND ( "FlowID: " << (iter2->first).first << " GroupID: " << (iter2->first).second << "\n" << ((iter2->second).ACKsECNs).size() );
-			// for(int i = 0; i < ((iter2->second).ACKsECNs).size(); i++ )	NS_LOG_UNCOND ( ((iter2->second).ACKsECNs[i]).first << " " << ((iter2->second).ACKsECNs[i]).second );
+				// NS_LOG_UNCOND ( "FlowID: " << (iter2->first).first << " GroupID: " << (iter2->first).second << "\n" << ((iter2->second).ACKsECNs).size() );
+				// for(int i = 0; i < ((iter2->second).ACKsECNs).size(); i++ )	NS_LOG_UNCOND ( ((iter2->second).ACKsECNs[i]).first << " " << ((iter2->second).ACKsECNs[i]).second );
 
-			// Skip if we havent logged 10pkts
-			if( ((iter2->second).ACKsECNs).size() == 10 )
-			{
-				for( uint32_t i = 0; i < 10; i++ )	ECNdistrVec[i] += ((iter2->second).ACKsECNs[i]).second;
-				for( uint32_t i = 0; i < 10; i++ )	{ if(((iter2->second).ACKsECNs[i]).second == 1) { firstECNdistrVec[i] += 1; break; } } 
-				numOf10pktsLogged++;
+				// Skip if we havent logged 10pkts
+				if( ((iter2->second).ACKsECNs).size() == 10 )
+				{
+					for( uint32_t i = 0; i < 10; i++ )	ECNdistrVec[i] += ((iter2->second).ACKsECNs[i]).second;
+					for( uint32_t i = 0; i < 10; i++ )	{ if(((iter2->second).ACKsECNs[i]).second == 1) { firstECNdistrVec[i] += 1; break; } } 
+					numOf10pktsLogged++;
+				}
 			}
 		}
 	}
-
 	// NS_LOG_UNCOND ("### All Flows ###");
 	uint32_t o=0;
 	uint32_t t=0;
 	uint32_t w=0;
-    for (std::map<uint32_t, CloveFlowlet>::iterator flowletItr = m_flowletMap.begin(); flowletItr != m_flowletMap.end (); ++flowletItr)
+	for (std::map<uint32_t, CloveFlowlet>::iterator flowletItr = m_flowletMap.begin(); flowletItr != m_flowletMap.end (); ++flowletItr)
 	{	
 		if((flowletItr->second).longFlow==1)
 		{
@@ -614,19 +642,19 @@ Ipv4Clove::GetStatsShortFlows (void)
 						demi++;
 				}
 				numDecis++;
-			// NS_LOG_UNCOND ( "FlowID: " << (iter2->first).first << " GroupID: " << (iter2->first).second << "\n" << ((iter2->second).ACKsECNs).size() );
-			// for(int i = 0; i < ((iter2->second).ACKsECNs).size(); i++ )	NS_LOG_UNCOND ( ((iter2->second).ACKsECNs[i]).first << " " << ((iter2->second).ACKsECNs[i]).second );
+				// NS_LOG_UNCOND ( "FlowID: " << (iter2->first).first << " GroupID: " << (iter2->first).second << "\n" << ((iter2->second).ACKsECNs).size() );
+				// for(int i = 0; i < ((iter2->second).ACKsECNs).size(); i++ )	NS_LOG_UNCOND ( ((iter2->second).ACKsECNs[i]).first << " " << ((iter2->second).ACKsECNs[i]).second );
 
-			// Skip if we havent logged 10pkts
-			if( ((iter2->second).ACKsECNs).size() == 10 )
-			{
-				for( uint32_t i = 0; i < 10; i++ )	ECNdistrVec[i] += ((iter2->second).ACKsECNs[i]).second;
-				for( uint32_t i = 0; i < 10; i++ )	{ if(((iter2->second).ACKsECNs[i]).second == 1) { firstECNdistrVec[i] += 1; break; } } 
-				numOf10pktsLogged++;
+				// Skip if we havent logged 10pkts
+				if( ((iter2->second).ACKsECNs).size() == 10 )
+				{
+					for( uint32_t i = 0; i < 10; i++ )	ECNdistrVec[i] += ((iter2->second).ACKsECNs[i]).second;
+					for( uint32_t i = 0; i < 10; i++ )	{ if(((iter2->second).ACKsECNs[i]).second == 1) { firstECNdistrVec[i] += 1; break; } } 
+					numOf10pktsLogged++;
+				}
 			}
 		}
 	}
-
 	// NS_LOG_UNCOND ("### All Flows ###");
 	uint32_t o=0;
 	uint32_t t=0;
@@ -656,5 +684,7 @@ Ipv4Clove::GetStatsShortFlows (void)
 	NS_LOG_UNCOND (firstECNdistrVec[0] << " " << firstECNdistrVec[1] << " " << firstECNdistrVec[2] << " " << firstECNdistrVec[3] << " " << firstECNdistrVec[4] << " " << firstECNdistrVec[5] << " " << firstECNdistrVec[6] << " " << firstECNdistrVec[7] << " " << firstECNdistrVec[8] << " " << firstECNdistrVec[9] );
 
 }
+
+
 
 }

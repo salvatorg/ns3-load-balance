@@ -38,7 +38,7 @@ Ptr<Ipv4Route>
 Ipv4XPathRouting::RouteOutput (Ptr<Packet> p, const Ipv4Header &header, Ptr<NetDevice> oif,
         Socket::SocketErrno &sockerr)
 {
-  NS_LOG_ERROR (this << " XPath routing is not support for local routing output");
+  NS_LOG_ERROR (this << " XPath routing is not support for local routing output. It cannot be  used for locally originated packets");
   return 0;
 }
 
@@ -48,6 +48,7 @@ Ipv4XPathRouting::RouteInput (Ptr<const Packet> p, const Ipv4Header &header, Ptr
                            LocalDeliverCallback lcb, ErrorCallback ecb)
 {
   NS_ASSERT (m_ipv4->GetInterfaceForDevice (idev) >= 0);
+
 
   Ptr<Packet> packet = ConstCast<Packet> (p);
 
@@ -63,7 +64,7 @@ Ipv4XPathRouting::RouteInput (Ptr<const Packet> p, const Ipv4Header &header, Ptr
   // Check if input device supports IP forwarding
   uint32_t iif = m_ipv4->GetInterfaceForDevice (idev);
   if (m_ipv4->IsForwarding (iif) == false) {
-    NS_LOG_ERROR (this << " Forwarding disabled for this interface");
+    NS_LOG_ERROR (this << " Forwarding disabled for this interface "<< " Source: " << header.GetSource());
     ecb (packet, header, Socket::ERROR_NOROUTETOHOST);
     return false;
   }
@@ -72,7 +73,7 @@ Ipv4XPathRouting::RouteInput (Ptr<const Packet> p, const Ipv4Header &header, Ptr
   bool found = packet->RemovePacketTag (ipv4XPathTag);
   if (!found)
   {
-    NS_LOG_ERROR (this << " Cannot perform XPath routing without knowing the Path ID");
+    NS_LOG_ERROR (this << " Cannot perform XPath routing without knowing the Path ID "<< " Source: " << header.GetSource());
     ecb (packet, header, Socket::ERROR_NOROUTETOHOST);
     return false;
   }
@@ -81,25 +82,27 @@ Ipv4XPathRouting::RouteInput (Ptr<const Packet> p, const Ipv4Header &header, Ptr
 
   if (pathId == 0)
   {
-    NS_LOG_LOGIC (this << " Reaching final hop, XPath will not handle the final hop");
+    NS_LOG_LOGIC (this << " Reaching final hop, XPath will not handle the final hop "<< " Source: " << header.GetSource());
     ecb (packet, header, Socket::ERROR_NOROUTETOHOST);
     return false;
   }
 
   uint32_t currentPort = pathId - (pathId / 100) * 100;
+  Ptr<NetDevice> deve = m_ipv4->GetNetDevice (currentPort);
+  uint32_t nodeID = (deve->GetNode())->GetId();
 
-  // NS_LOG_LOGIC (this << " Current port is: " << currentPort);
+//   NS_LOG_LOGIC (this << " [Ipv4XPathRouting] Current port is: " << currentPort << " PathID: " << pathId << " Source: " << header.GetSource());
 
   // std::cout << "Path: " << pathId << ", Current Port: " << currentPort << std::endl;
 
   if (currentPort > m_ipv4->GetNInterfaces ())
   {
-    NS_LOG_ERROR (this << " Port number error");
+    NS_LOG_ERROR (this << " NodeID[" << nodeID << "] Port number error");
     ecb (packet, header, Socket::ERROR_NOROUTETOHOST);
     return false;
   }
 
-  NS_LOG_LOGIC (this << " Forwarding packet: " << packet << " to port: " << currentPort);
+  NS_LOG_LOGIC (this << " NodeID[" << nodeID << "] Forwarding packet: " << packet << " to port: " << currentPort << " PathID: " << pathId << " Source: " << header.GetSource());
 
   ipv4XPathTag.SetPathId (pathId / 100);
   packet->AddPacketTag (ipv4XPathTag);

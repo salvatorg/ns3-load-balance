@@ -60,6 +60,8 @@ public:
 
     bool FindTorId (Ipv4Address daddr, uint32_t &torId);
 
+    std::vector<uint32_t> GetAvailPath (Ipv4Address daddr);
+
 	// salvatorg
     TracedCallback < uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, Ipv4Address, Ipv4Address, Ptr<Node> > m_pathTrace;
     typedef void (* ClovePathCallback) (uint32_t flowId, uint32_t fromTor, uint32_t toTor,
@@ -79,6 +81,7 @@ public:
 
 	void GetStats (void);
 	void GetStatsLongFlows (void);
+	void GetStatsShortFlows (void);
 	void CreateGroupStats (void);
 
 	uint32_t sumAvailWinSize;

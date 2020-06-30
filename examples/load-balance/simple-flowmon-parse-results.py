@@ -165,14 +165,16 @@ def main(argv):
 
     print "Avg FCT: %.4f" % (total_fct / flow_count)
     if large_flow_count == 0:
-	print "No large flows"
-    else:    
-        print "Large Flow Avg FCT: %.4f" % (large_flow_total_fct / large_flow_count)
+	print "No large flows (0)"
+    else:
+		print "Large Flows Number: %d" % (large_flow_count)
+		print "Large Flow Avg FCT: %.4f" % (large_flow_total_fct / large_flow_count)
    
     if small_flow_count == 0:
-   	print "No small flows"
-    else:     
-	print "Small Flow Avg FCT: %.4f" % (small_flow_total_fct / small_flow_count)
+   	print "No small flows (0)"
+    else:
+		print "Small Flow Number: %d" % (small_flow_count)
+		print "Small Flow Avg FCT: %.4f" % (small_flow_total_fct / small_flow_count)
 
     print "Total TX Packets: %i" % total_packets
     print "Total Lost Packets: %i" % total_lost_packets
