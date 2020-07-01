@@ -50,6 +50,10 @@ public:
 
     void StopProbe (Time stopTime);
 
+
+    TracedCallback <double, uint16_t, uint16_t> m_probeDelay;//, uint32_t, uint16_t, Time> m_probeDelay;
+    typedef void (* Probe1wayDelayCallback) (double time, uint16_t id, uint16_t src);//, uint32_t dst, uint16_t path, Time delay);
+
 private:
 
     void DoProbe ();
@@ -88,9 +92,10 @@ private:
 
     Ptr<Node> m_node;
 
+
 };
 
 }
 
-#endif /* CONGESTION_PROBING_H */
+#endif /* IPV4_PROBING_H */
 

@@ -36,6 +36,8 @@ extern "C"
 #include "cdf.h"
 }
 
+#define ECN_LOGs			false
+
 #define TG_GOODPUT_RATIO	(1448.0 / (1500 + 14 + 4 + 8 + 12))
 #define LINK_CAPACITY_BASE	1000000000				// 1Gbps
 
@@ -98,6 +100,9 @@ Gnuplot2dDataset queuediscDataset[8][8] ;
 std::stringstream filePlotQSizes;
 std::stringstream filePlotQueue;
 std::stringstream filePlotQueueAvg;
+
+std::stringstream AllQueuesLog;
+std::stringstream ProbeDelaysLog;
 
 
 NodeContainer spines;
@@ -222,7 +227,6 @@ void DoGnuPlotPdf (uint spine_id, double end_time)
 		queuediscGnuplot.SetTitle (os.str());
 		os.clear();
 
-
 		queuediscGnuplot.AppendExtra (y_range_max.str ());
 		queuediscGnuplot.AppendExtra ("set grid y");
 		queuediscGnuplot.AppendExtra (ecn_mark_line.str ());
@@ -294,41 +298,68 @@ void CheckQueueDiscSize (Ptr<QueueDisc> queue, uint spine, uint intf)
 }
 
 
-// void CheckQueueSize (uint32_t )
-// {
-//     uint32_t qSize = queueDiscs.Get(uplink_idx)->GetNBytes();;
-// 	// if (qSize==0) NS_LOG_UNCOND("QueueDisc " << spine << " " << intf );
-//     // queuediscDataset[spine][intf].Add (Simulator::Now ().GetSeconds (), qSize);
-// 	// queuediscDataset[spine][intf].Add (Simulator::Now ().GetSeconds (), qSize);
-// 	NS_LOG_UNCOND("QueueDisc " << spine << " " << intf );
-//     Simulator::Schedule (Seconds (0.00001), &CheckQueueDiscSize, queue, spine, intf); // 10us
-// }
+
+
+void CheckQueueDiscSize (uint32_t interval)
+{
+	std::ostringstream os;
+
+	os << Simulator::Now ().GetSeconds ();
+	// This log will write the utilisation of all queues of the leaves-spines
+	// E.g. 2x2 network, 2 servers each ToR
+	// Format of TxQueues : L0S0 S0L0 L0S1 S1L0 L1S0 S0L1 L1S1 S1L1
+	for ( uint i = 0; i < queueDiscs.GetN(); i++ )
+	{
+		os << " " << (queueDiscs.Get(i))->GetNBytes () ;
+	}
+	// This log will write all the tx queues of the leaves-servers
+	for ( uint i = 0; i < QueueDiscLeavesToServers.GetN(); i++ )
+	{
+		os << " " << (QueueDiscLeavesToServers.Get(i))->GetNBytes () ;
+	}
+
+	//NS_LOG_UNCOND (os.str ());
+
+	std::ofstream out (AllQueuesLog.str ().c_str (), std::ios::out|std::ios::app);
+	out << os.str () << std::endl;
+
+	Simulator::Schedule (MicroSeconds (interval), &CheckQueueDiscSize, interval); 
+}
+
+void Probe1wayDelayPrint(double time, uint16_t id, uint16_t src)//, uint32_t dst, uint16_t path, Time delay)
+{
+	std::ostringstream os;
+	os << time << id << src ;//<< dst << path << delay;
+
+	NS_LOG_UNCOND (os.str());
+
+	std::ofstream out ( ProbeDelaysLog.str ().c_str (), std::ios::out|std::ios::app);
+	out << os.str() << std::endl;
+}
 
 void CloveQueuesTrace ()
 {
 	 std::ostringstream oss;
 	 std::string fPlotQueue = " ";
 
-
-
 //   fPlotQueue << "CheckQueueSize: " << Simulator::Now ().GetSeconds () << "\t";
-  for (QueueDiscContainer::ConstIterator i = queueDiscs.Begin (); i != queueDiscs.End (); ++i)
-  {
-	//(*i)->method ();  // some QueueDisc method
-	// Modidified by salvatorg
-	// Returns the number of bytes, QUEUE_MODE_BYTES
-	uint qSize = StaticCast<RedQueueDisc> (*i)->GetQueueSize (); //  <QueueDisc> (*i)->GetNBytes()
-	oss << qSize << " ";
-	// std::string ss = std::to_string(qSize);
-	//NS_LOG_UNCOND("Size ("<< << (*i) <<"): " << qSize);
-	// fPlotQueue += oss.str();
-	// fPlotQueue += " ";
-	//oss.clear();
-	// if (i == queueDiscs.End () )
-	// 	fPlotQueue += qSize + std::endl;
-	// else
-	// 	fPlotQueue += qSize + "\t";
-  }	
+	for (QueueDiscContainer::ConstIterator i = queueDiscs.Begin (); i != queueDiscs.End (); ++i)
+	{
+		//(*i)->method ();  // some QueueDisc method
+		// Modidified by salvatorg
+		// Returns the number of bytes, QUEUE_MODE_BYTES
+		uint qSize = StaticCast<RedQueueDisc> (*i)->GetQueueSize (); //  <QueueDisc> (*i)->GetNBytes()
+		oss << qSize << " ";
+		// std::string ss = std::to_string(qSize);
+		//NS_LOG_UNCOND("Size ("<< << (*i) <<"): " << qSize);
+		// fPlotQueue += oss.str();
+		// fPlotQueue += " ";
+		//oss.clear();
+		// if (i == queueDiscs.End () )
+		// 	fPlotQueue += qSize + std::endl;
+		// else
+		// 	fPlotQueue += qSize + "\t";
+	}	
 	NS_LOG_UNCOND("CheckQueueSize at time: " << Simulator::Now ().GetSeconds () << " " << oss.str());
 
 }
@@ -426,37 +457,37 @@ T rand_range (T min, T max)
 }
 
 void install_applications (int fromLeafId, NodeContainer servers, double requestRate, struct cdf_table *cdfTable,
-        long &flowCount, long &totalFlowSize, int SERVER_COUNT, int LEAF_COUNT, double START_TIME, double END_TIME, double FLOW_LAUNCH_END_TIME, uint32_t applicationPauseThresh, uint32_t applicationPauseTime)
+		long &flowCount, long &totalFlowSize, int SERVER_COUNT, int LEAF_COUNT, double START_TIME, double END_TIME, double FLOW_LAUNCH_END_TIME, uint32_t applicationPauseThresh, uint32_t applicationPauseTime)
 {
-    NS_LOG_INFO ("Install applications under POD: "<< fromLeafId << ", (requestRate):" << requestRate);
+	NS_LOG_INFO ("Install applications under POD: "<< fromLeafId << ", (requestRate):" << requestRate);
 	uint32_t longFlowsNum=0;
 	uint32_t shortFlowsNum=0;
 	uint32_t totalFlowsNum=0;
 	uint64_t totalBytes=0;
-    for (int i = 0; i < SERVER_COUNT; i++)//SERVER_COUNT
-    {
-        int fromServerIndex = fromLeafId * SERVER_COUNT + i;
+	for (int i = 0; i < SERVER_COUNT; i++)//SERVER_COUNT
+	{
+		int fromServerIndex = fromLeafId * SERVER_COUNT + i;
 		double tmp;
-        double startTime = START_TIME + poission_gen_interval (requestRate);
-        while (startTime < FLOW_LAUNCH_END_TIME)
-        {
+		double startTime = START_TIME + poission_gen_interval (requestRate);
+		while (startTime < FLOW_LAUNCH_END_TIME)
+		{
 			totalFlowsNum ++;
-            flowCount ++;
-            uint16_t port = rand_range (PORT_START, PORT_END);
+			flowCount ++;
+			uint16_t port = rand_range (PORT_START, PORT_END);
 
-            int destServerIndex = fromServerIndex;
-	        while (destServerIndex >= fromLeafId * SERVER_COUNT && destServerIndex < fromLeafId * SERVER_COUNT + SERVER_COUNT)
-            {
-		        destServerIndex = rand_range (0, SERVER_COUNT * LEAF_COUNT);
-            }
+			int destServerIndex = fromServerIndex;
+			while (destServerIndex >= fromLeafId * SERVER_COUNT && destServerIndex < fromLeafId * SERVER_COUNT + SERVER_COUNT)
+			{
+				destServerIndex = rand_range (0, SERVER_COUNT * LEAF_COUNT);
+			}
 
-	        Ptr<Node> destServer = servers.Get (destServerIndex);
-	        Ptr<Ipv4> ipv4 = destServer->GetObject<Ipv4> ();
-	        Ipv4InterfaceAddress destInterface = ipv4->GetAddress (1,0);
-	        Ipv4Address destAddress = destInterface.GetLocal ();
+			Ptr<Node> destServer = servers.Get (destServerIndex);
+			Ptr<Ipv4> ipv4 = destServer->GetObject<Ipv4> ();
+			Ipv4InterfaceAddress destInterface = ipv4->GetAddress (1,0);
+			Ipv4Address destAddress = destInterface.GetLocal ();
 
-            BulkSendHelper source ("ns3::TcpSocketFactory", InetSocketAddress (destAddress, port));
-            uint32_t flowSize = gen_random_cdf (cdfTable);
+			BulkSendHelper source ("ns3::TcpSocketFactory", InetSocketAddress (destAddress, port));
+			uint32_t flowSize = gen_random_cdf (cdfTable);
 
 			// salvatorg
 			// Keep a counter on the long/short flows (long>=10MB)
@@ -466,33 +497,33 @@ void install_applications (int fromLeafId, NodeContainer servers, double request
 				shortFlowsNum++;
 
 			totalBytes += flowSize;
-            totalFlowSize += flowSize;
- 	        source.SetAttribute ("SendSize", UintegerValue (PACKET_SIZE));
-            source.SetAttribute ("MaxBytes", UintegerValue(flowSize));//flowSize
-            // source.SetAttribute ("DelayThresh", UintegerValue (applicationPauseThresh));
-            // source.SetAttribute ("DelayTime", TimeValue (MicroSeconds (applicationPauseTime)));
+			totalFlowSize += flowSize;
+ 			source.SetAttribute ("SendSize", UintegerValue (PACKET_SIZE));
+			source.SetAttribute ("MaxBytes", UintegerValue(flowSize));//flowSize
+			// source.SetAttribute ("DelayThresh", UintegerValue (applicationPauseThresh));
+			// source.SetAttribute ("DelayTime", TimeValue (MicroSeconds (applicationPauseTime)));
 
-            // Install apps
-            ApplicationContainer sourceApp = source.Install (servers.Get (fromServerIndex));
-            sourceApp.Start (Seconds (startTime));
-            sourceApp.Stop (Seconds (END_TIME));
+			// Install apps
+			ApplicationContainer sourceApp = source.Install (servers.Get (fromServerIndex));
+			sourceApp.Start (Seconds (startTime));
+			sourceApp.Stop (Seconds (END_TIME));
 
-            // Install packet sinks
-            PacketSinkHelper sink ("ns3::TcpSocketFactory",
-                    InetSocketAddress (Ipv4Address::GetAny (), port));
-            ApplicationContainer sinkApp = sink.Install (servers. Get (destServerIndex));
-            sinkApp.Start (Seconds (START_TIME));
-            sinkApp.Stop (Seconds (END_TIME));
+			// Install packet sinks
+			PacketSinkHelper sink ("ns3::TcpSocketFactory",
+					InetSocketAddress (Ipv4Address::GetAny (), port));
+			ApplicationContainer sinkApp = sink.Install (servers. Get (destServerIndex));
+			sinkApp.Start (Seconds (START_TIME));
+			sinkApp.Stop (Seconds (END_TIME));
 
-            // NS_LOG_INFO ("\tFlow from server: " << fromServerIndex << " to server: "
-            //         << destServerIndex << " on port: " << port << " with flow size: "
-            //         << flowSize << " [start time: " << startTime <<"]");
-            // if(flowCount==10)break;
+			// NS_LOG_INFO ("\tFlow from server: " << fromServerIndex << " to server: "
+			//         << destServerIndex << " on port: " << port << " with flow size: "
+			//         << flowSize << " [start time: " << startTime <<"]");
+			// if(flowCount==10)break;
 			tmp = poission_gen_interval (requestRate);
-            startTime += tmp;
+			startTime += tmp;
 			// NS_LOG_INFO (tmp);
-        }
-    }
+		}
+	}
 	NS_LOG_INFO ("\tTotal Bytes to be sent\t: " << totalBytes*1e-9 << " GBytes " << " ( " << (totalBytes*8*1e-9) << " Gbits )");
 	NS_LOG_INFO ("\tNumber of long flows\t: " << longFlowsNum);
 	NS_LOG_INFO ("\tNumber of short flows\t: " << shortFlowsNum);
@@ -567,8 +598,8 @@ int main (int argc, char *argv[])
 	int LEAF_COUNT		= 2;	// Nember of Leaves
 	int LINK_COUNT		= 1;	// Number of links between each leaf-spine node
 
-	uint64_t spineLeafCapacity	= 10;	// Multiplied with the LINK_CAPACITY_BASE (bps)
-	uint64_t leafServerCapacity	= 10;	// Multiplied with the LINK_CAPACITY_BASE (bps)
+	uint64_t spineLeafCapacity		= 10;	// Multiplied with the LINK_CAPACITY_BASE (bps)
+	uint64_t leafServerCapacity		= 10;	// Multiplied with the LINK_CAPACITY_BASE (bps)
 
 	uint32_t applicationPauseThresh	= 0;
 	uint32_t applicationPauseTime	= 1000;
@@ -579,8 +610,10 @@ int main (int argc, char *argv[])
 	uint32_t cloveHalfRTT			= 60;	// micro seconds
 	bool cloveDisToUncongestedPath	= false;
 
-	bool ProbingEnable			= false;
-	uint32_t ProbingInterval	= 100;	// micro seconds
+	bool ProbingEnable				= false;
+	uint32_t ProbingInterval		= 1000;	// micro seconds
+
+	uint32_t Interval4QueuesCheck	= 1000;	// micro seconds
 
 	CommandLine cmd;
 	cmd.AddValue ("ID", "Running ID", id);
@@ -613,8 +646,10 @@ int main (int argc, char *argv[])
 	cmd.AddValue ("cloveHalfRTT", "Half RTT used in Clove ECN", cloveHalfRTT);
 	cmd.AddValue ("cloveDisToUncongestedPath", "Whether Clove will distribute the weight to uncongested path (no ECN) or all paths", cloveDisToUncongestedPath);
 
-    cmd.AddValue ("ProbingEnable", "ProbingEnable", ProbingEnable);
-    cmd.AddValue ("ProbingInterval", "ProbingInterval", ProbingInterval);
+	cmd.AddValue ("ProbingEnable", "ProbingEnable", ProbingEnable);
+	cmd.AddValue ("ProbingInterval", "ProbingInterval in microseconds", ProbingInterval);
+
+	cmd.AddValue ("Interval4QueuesCheck", "Interval for checking queue utilization in microseconds", Interval4QueuesCheck);
 
 	cmd.Parse (argc, argv);
 
@@ -887,7 +922,6 @@ int main (int argc, char *argv[])
 					NS_LOG_INFO ("\tReducing Link Capacity of Spine: " << j << " with port: " << netDeviceContainer.Get (1)->GetIfIndex ());
 				}
 
-
 				if (runMode == Clove)
 				{
 					std::pair<int, int> leafToSpine = std::make_pair<int, int> (i, j);
@@ -907,28 +941,26 @@ int main (int argc, char *argv[])
 	}
 
 	// ATTEMPT to set up multicast address for the probes
-    //  Ptr<Node> multicastRouter = leaves.Get(1);  // The node in question
+	//  Ptr<Node> multicastRouter = leaves.Get(1);  // The node in question
 	//  NS_LOG_UNCOND(" >>>>>>>>> LEAF:" << multicastRouter->GetId() << " " << multicastRouter->GetNDevices());
 	//  // The first ifIndex is 0 for loopback, then the first p2p is numbered 1
-    //  uint32_t inputIf = (multicastRouter->GetDevice (3))->GetIfIndex ();  // The input NetDevice
-    //  std::vector< uint32_t > outputDevices;  // A container of output NetDevices
-    //  outputDevices.push_back((multicastRouter->GetDevice (1))->GetIfIndex ()); 
+	//  uint32_t inputIf = (multicastRouter->GetDevice (3))->GetIfIndex ();  // The input NetDevice
+	//  std::vector< uint32_t > outputDevices;  // A container of output NetDevices
+	//  outputDevices.push_back((multicastRouter->GetDevice (1))->GetIfIndex ()); 
    	//  outputDevices.push_back((multicastRouter->GetDevice (2))->GetIfIndex ());
 
 	// staticRoutingHelper.GetStaticRouting (multicastRouter->GetObject<Ipv4> ())-> AddMulticastRoute (Ipv4Address("10.1.1.2"), Ipv4Address("225.1.2.4"), inputIf, outputDevices);
-    // //  staticRoutingHelper.AddMulticastRoute (multicastRouter, Ipv4Address("10.1.1.2"), Ipv4Address("225.1.2.4"), inputIf, outputDevices);
+	// //  staticRoutingHelper.AddMulticastRoute (multicastRouter, Ipv4Address("10.1.1.2"), Ipv4Address("225.1.2.4"), inputIf, outputDevices);
 	// inputIf = (multicastRouter->GetDevice (4))->GetIfIndex ();  // The input NetDevice
 	// staticRoutingHelper.GetStaticRouting (multicastRouter->GetObject<Ipv4> ())-> AddMulticastRoute (Ipv4Address("10.1.1.2"), Ipv4Address("225.1.2.4"), inputIf, outputDevices);
 
-    //  // 2) Set up a default multicast route on the sender n0 
-    //  Ptr<Node> sender = servers.Get (0);
-    //  uint32_t senderIf = (sender->GetDevice(1))->GetIfIndex ();
-    //  staticRoutingHelper.GetStaticRouting (multicastRouter->GetObject<Ipv4> ())->SetDefaultMulticastRoute (senderIf);
+	//  // 2) Set up a default multicast route on the sender n0 
+	//  Ptr<Node> sender = servers.Get (0);
+	//  uint32_t senderIf = (sender->GetDevice(1))->GetIfIndex ();
+	//  staticRoutingHelper.GetStaticRouting (multicastRouter->GetObject<Ipv4> ())->SetDefaultMulticastRoute (senderIf);
 
 
-
-
-	NS_LOG_INFO ("Installed RED Queues, Tot.Number : " << queueDiscs.GetN() << " queues");
+	NS_LOG_INFO ("Installed RED Queues to Leaves-Spines. Tot.Number : " << queueDiscs.GetN() << " queues");
 
 	if (runMode == ECMP || runMode == Clove)
 	{
@@ -1070,18 +1102,18 @@ int main (int argc, char *argv[])
 	long flowCount = 0;
 	long totalFlowSize = 0;
 
-	// for (int fromLeafId = 0; fromLeafId < LEAF_COUNT; fromLeafId ++)//LEAF_COUNT
-	// {
-	//      install_applications(fromLeafId, servers, requestRate, cdfTable, flowCount, totalFlowSize, SERVER_COUNT, LEAF_COUNT, START_TIME, END_TIME, FLOW_LAUNCH_END_TIME, applicationPauseThresh, applicationPauseTime);
-	// }
+	for (int fromLeafId = 0; fromLeafId < LEAF_COUNT; fromLeafId ++)//LEAF_COUNT
+	{
+		 install_applications(fromLeafId, servers, requestRate, cdfTable, flowCount, totalFlowSize, SERVER_COUNT, LEAF_COUNT, START_TIME, END_TIME, FLOW_LAUNCH_END_TIME, applicationPauseThresh, applicationPauseTime);
+	}
 
 	// Manually add and launch applications
-	install_single_application(0, 2, servers, 10000, START_TIME, END_TIME);
-	install_single_application(1, 2, servers, 50000000, START_TIME, END_TIME);
+	// install_single_application(0, 2, servers, 1000000, START_TIME, END_TIME);
+	// install_single_application(1, 2, servers, 50000000, START_TIME, END_TIME);
 	// install_single_application(3, 2, servers, 50000000, START_TIME, END_TIME);
 
-	// install_single_application(0, 3, servers, 50000000, START_TIME+0.2, END_TIME);
-	// install_single_application(1, 3, servers, 50000000, START_TIME+0.2, END_TIME);
+	// install_single_application(0, 3, servers, 50000000, START_TIME, END_TIME);
+	// install_single_application(1, 3, servers, 50000000, START_TIME, END_TIME);
 
 	NS_LOG_INFO ("Total Number of flows\t: " << flowCount);
 	NS_LOG_INFO ("Sum of flow sizes\t: " << totalFlowSize << " Bytes");
@@ -1160,7 +1192,7 @@ int main (int argc, char *argv[])
 		NS_LOG_INFO("FLOWLET TIMEOUT\t: "<< cloveFlowletTimeout << "us");
 		NS_LOG_INFO ("RED_QUEUE_MARKING\t: " << RED_QUEUE_MARKING << " packets, " << RED_QUEUE_MARKING*PACKET_SIZE << "Bytes");
 		NS_LOG_INFO ("WORKLOAD CDF\t: " << cdfFileName);
-		Config::ConnectWithoutContext ("/NodeList/*/$ns3::Ipv4Clove/ClovePathTrace", MakeCallback (&ClovePathTrace));
+		// Config::ConnectWithoutContext ("/NodeList/*/$ns3::Ipv4Clove/ClovePathTrace", MakeCallback (&ClovePathTrace));
 		// Config::ConnectWithoutContext ("/NodeList/*/$ns3::Ipv4Clove/CloveQueuesTrace", MakeCallback (&CloveQueuesTrace));
 	}
 
@@ -1179,8 +1211,24 @@ int main (int argc, char *argv[])
 	// for (uint i=0; i<8; i++)
 	// 	for (uint j=0; j<8; j++)
 	//     	Simulator::ScheduleNow (&CheckQueueDiscSize, SpineQueueDiscs[i][j], i, j);
-	AsciiTraceHelper ascii;
-	p2p.EnableAsciiAll (ascii.CreateFileStream ("csma-multicast.tr"));
+	if (ProbingEnable)
+	{
+		NS_LOG_INFO ("Enabling Probes and QueuesUtilization Logs");
+		
+
+		// Config::ConnectWithoutContext ( "/NodeList/*/ApplicationList/*/$ns3::Ipv4Probing/Probe1wayDelay", MakeCallback (&Probe1wayDelayPrint) );
+		// ProbeDelaysLog << "ProbeDelaysLog.log";
+		// remove (ProbeDelaysLog.str ().c_str ());
+
+		// std::ofstream out (ProbeDelaysLog.str ().c_str (), std::ios::out|std::ios::app);
+
+		// Write the logs to file
+		AllQueuesLog << "AllQueuesLog.log";
+		remove (AllQueuesLog.str ().c_str ());
+		Simulator::ScheduleNow (&CheckQueueDiscSize, Interval4QueuesCheck);
+	}
+	// AsciiTraceHelper ascii;
+	// p2p.EnableAsciiAll (ascii.CreateFileStream ("csma-multicast.tr"));
 
 	NS_LOG_INFO ("Start simulation");
 	Simulator::Stop (Seconds (END_TIME));
@@ -1199,11 +1247,14 @@ int main (int argc, char *argv[])
 	// 	DoGnuPlotPdf (i, END_TIME);
 	// }	
 
-
-
 	// salvatorg
-	if (runMode == Clove)
-	{
+	//	-------------------------------------------------------------------------------
+	//	ECN LOGS
+	//	Tracking system in the network in which queues the ECNs are being set (1,2,3)
+	//	Clove spesific, GetNumECNs() (4)
+	//	Get the distribution of the first 10 ECNs received by every node
+	if ( runMode == Clove && ECN_LOGs )
+	{	// 1
 		NS_LOG_INFO ("### All Flows ###");
 		for (int k = 0; k < SERVER_COUNT * LEAF_COUNT ; k++)//SERVER_COUNT * LEAF_COUNT
 		{
@@ -1213,6 +1264,7 @@ int main (int argc, char *argv[])
 			Ptr<Ipv4Clove> clove = servers.Get (k)->GetObject<Ipv4Clove> ();
 			clove->GetStats();
  		}
+		 // 2
 		NS_LOG_INFO ("### Long Flows ###");
 		for (int k = 0; k < SERVER_COUNT * LEAF_COUNT; k++)//SERVER_COUNT * LEAF_COUNT
 		{
@@ -1222,6 +1274,7 @@ int main (int argc, char *argv[])
 			Ptr<Ipv4Clove> clove = servers.Get (k)->GetObject<Ipv4Clove> ();
 			clove->GetStatsLongFlows();
 		}
+		// 3
 		NS_LOG_INFO ("### Short Flows ###");
 		for (int k = 0; k < SERVER_COUNT * LEAF_COUNT; k++)//SERVER_COUNT * LEAF_COUNT
 		{
@@ -1231,6 +1284,7 @@ int main (int argc, char *argv[])
 			Ptr<Ipv4Clove> clove = servers.Get (k)->GetObject<Ipv4Clove> ();
 			clove->GetStatsLongFlows();
 		}
+		// 4
 		// Stats for the number of ECN bits that have been set by the queues 
 		GetNumECNs();
 	}
