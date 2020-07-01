@@ -700,6 +700,12 @@ int main (int argc, char *argv[])
 		Config::SetDefault ("ns3::Ipv4Clove::HalfRTT", TimeValue (MicroSeconds (cloveHalfRTT)));
 		Config::SetDefault ("ns3::Ipv4Clove::DisToUncongestedPath", BooleanValue (cloveDisToUncongestedPath));
 	}
+	if (runMode == ECMP)
+	{
+		NS_LOG_INFO ("Enabling ECMP");
+	}
+
+
 
 	if (ProbingEnable)
 	{
@@ -1153,8 +1159,8 @@ int main (int argc, char *argv[])
 	std::stringstream flowMonitorFilename;
 	std::stringstream linkMonitorFilename;
 
-	flowMonitorFilename << id << "-" << LEAF_COUNT << "x" << SPINE_COUNT << "-L" << load*100 << "-"  << transportProt << "-" << enum_to_string(runMode)<< cloveRunMode << "-";
-	linkMonitorFilename << id << "-" << LEAF_COUNT << "x" << SPINE_COUNT << "-L" << load*100 << "-"  << transportProt << "-" << enum_to_string(runMode)<< cloveRunMode << "-";
+	flowMonitorFilename << id << "-" << LEAF_COUNT << "x" << SPINE_COUNT << "-L" << load*100 << "-"  << transportProt << "-" << enum_to_string(runMode)<< "-";
+	linkMonitorFilename << id << "-" << LEAF_COUNT << "x" << SPINE_COUNT << "-L" << load*100 << "-"  << transportProt << "-" << enum_to_string(runMode)<< "-";
 
 
 	// if (runMode == ECMP)
@@ -1166,8 +1172,8 @@ int main (int argc, char *argv[])
 	{
 		// flowMonitorFilename << "clove-" << cloveRunMode << "-FTMO" << cloveFlowletTimeout << "-HRTT" << cloveHalfRTT << "-" << cloveDisToUncongestedPath << "-";
 		// linkMonitorFilename << "clove-" << cloveRunMode << "-FTMO" << cloveFlowletTimeout << "-HRTT" << cloveHalfRTT << "-" << cloveDisToUncongestedPath << "-";
-		flowMonitorFilename << "FTMO" << cloveFlowletTimeout << "-HRTT" << cloveHalfRTT << "-UNCONGPATH" << cloveDisToUncongestedPath << "-";
-		linkMonitorFilename << "FTMO" << cloveFlowletTimeout << "-HRTT" << cloveHalfRTT << "-UNCONGPATH" << cloveDisToUncongestedPath << "-";
+		flowMonitorFilename << cloveRunMode << "-FTMO" << cloveFlowletTimeout << "-HRTT" << cloveHalfRTT << "-UNCONGPATH" << cloveDisToUncongestedPath << "-";
+		linkMonitorFilename << cloveRunMode << "-FTMO" << cloveFlowletTimeout << "-HRTT" << cloveHalfRTT << "-UNCONGPATH" << cloveDisToUncongestedPath << "-";
 	}
 
 
@@ -1189,14 +1195,14 @@ int main (int argc, char *argv[])
 	if (runMode == Clove)
 	{
 		NS_LOG_INFO ("Enabling Clove tracing");
-		NS_LOG_INFO("FLOWLET TIMEOUT\t: "<< cloveFlowletTimeout << "us");
+		NS_LOG_INFO ("FLOWLET TIMEOUT\t: "<< cloveFlowletTimeout << "us");
 		NS_LOG_INFO ("RED_QUEUE_MARKING\t: " << RED_QUEUE_MARKING << " packets, " << RED_QUEUE_MARKING*PACKET_SIZE << "Bytes");
 		NS_LOG_INFO ("WORKLOAD CDF\t: " << cdfFileName);
 		// Config::ConnectWithoutContext ("/NodeList/*/$ns3::Ipv4Clove/ClovePathTrace", MakeCallback (&ClovePathTrace));
 		// Config::ConnectWithoutContext ("/NodeList/*/$ns3::Ipv4Clove/CloveQueuesTrace", MakeCallback (&CloveQueuesTrace));
 	}
 
-	NS_LOG_INFO ("Total Number of Netwrok Elements in simualtion\t:" << ns3::NodeList::GetNNodes() );
+	NS_LOG_INFO ("Total Number of Network Elements in simualtion\t:" << ns3::NodeList::GetNNodes() );
 //   if (false)
 //     {
 //       filePlotQueue << "./" << flowMonitorFilename.str () << "_queuesUtil.plotme";
