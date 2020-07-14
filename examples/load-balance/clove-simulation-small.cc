@@ -85,6 +85,8 @@ uint64_t LetflowPositives=0;
 uint64_t LetflowEmptyPkts=0;
 
 QueueDiscContainer queueDiscs;
+QueueDiscContainer QueueDiscLeavesToSpines;
+QueueDiscContainer QueueDiscSpinesToLeaves;
 QueueDiscContainer QueueDiscLeavesToServers;
 QueueDiscContainer QueueDiscServersToLeaves;
 
@@ -111,6 +113,7 @@ NodeContainer leaves;
 // leaves.Create (LEAF_COUNT);
 NodeContainer servers;
 // servers.Create (SERVER_COUNT * LEAF_COUNT);
+
 
 
 // salvatorg
@@ -313,6 +316,8 @@ void CheckQueueDiscSize (uint32_t interval)
 		os << " " << (queueDiscs.Get(i))->GetNBytes () ;
 	}
 	// This log will write all the tx queues of the leaves-servers
+	// E.g. 2x2 network, 2 servers each ToR
+	// Format of TxQueues : L0S0 L0S1 L1S0 L1S1
 	for ( uint i = 0; i < QueueDiscLeavesToServers.GetN(); i++ )
 	{
 		os << " " << (QueueDiscLeavesToServers.Get(i))->GetNBytes () ;
@@ -457,7 +462,7 @@ T rand_range (T min, T max)
 }
 
 void install_applications (int fromLeafId, NodeContainer servers, double requestRate, struct cdf_table *cdfTable,
-		long &flowCount, long &totalFlowSize, int SERVER_COUNT, int LEAF_COUNT, double START_TIME, double END_TIME, double FLOW_LAUNCH_END_TIME, uint32_t applicationPauseThresh, uint32_t applicationPauseTime)
+		long &flowCount, long &totalFlowSize, int SERVER_COUNT, int LEAF_COUNT, double START_TIME, double END_TIME, double FLOW_LAUNCH_END_TIME, uint32_t applicationPauseThresh, uint32_t applicationPauseTime, uint32_t ProbingEnable)
 {
 	NS_LOG_INFO ("Install applications under POD: "<< fromLeafId << ", (requestRate):" << requestRate);
 	uint32_t longFlowsNum=0;
@@ -466,6 +471,13 @@ void install_applications (int fromLeafId, NodeContainer servers, double request
 	uint64_t totalBytes=0;
 	for (int i = 0; i < SERVER_COUNT; i++)//SERVER_COUNT
 	{
+		if (ProbingEnable && ( i == SERVER_COUNT-1 ) )
+		{
+			NS_LOG_INFO ("Excluding Server [" << i << "] from generating traffic");
+			continue;
+		}
+
+
 		int fromServerIndex = fromLeafId * SERVER_COUNT + i;
 		double tmp;
 		double startTime = START_TIME + poission_gen_interval (requestRate);
@@ -509,8 +521,7 @@ void install_applications (int fromLeafId, NodeContainer servers, double request
 			sourceApp.Stop (Seconds (END_TIME));
 
 			// Install packet sinks
-			PacketSinkHelper sink ("ns3::TcpSocketFactory",
-					InetSocketAddress (Ipv4Address::GetAny (), port));
+			PacketSinkHelper sink ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
 			ApplicationContainer sinkApp = sink.Install (servers. Get (destServerIndex));
 			sinkApp.Start (Seconds (START_TIME));
 			sinkApp.Stop (Seconds (END_TIME));
@@ -519,8 +530,8 @@ void install_applications (int fromLeafId, NodeContainer servers, double request
 			//         << destServerIndex << " on port: " << port << " with flow size: "
 			//         << flowSize << " [start time: " << startTime <<"]");
 			// if(flowCount==10)break;
-			tmp = poission_gen_interval (requestRate);
-			startTime += tmp;
+			// tmp = poission_gen_interval (requestRate);
+			startTime += poission_gen_interval (requestRate);
 			// NS_LOG_INFO (tmp);
 		}
 	}
@@ -729,8 +740,9 @@ int main (int argc, char *argv[])
 	// NodeContainer leaves;
 	leaves.Create (LEAF_COUNT);
 	// NodeContainer servers;
-	servers.Create (SERVER_COUNT * LEAF_COUNT);
+	servers.Create ( SERVER_COUNT * LEAF_COUNT );
 
+	// Create a list with all the Ipv4Probing stacks
 	std::vector<Ptr<Ipv4Probing> > probings (SERVER_COUNT * LEAF_COUNT);
 
 
@@ -797,6 +809,7 @@ int main (int argc, char *argv[])
 	}
 
 	NS_LOG_INFO ("Configuring servers (Servers:" << servers.GetN() << ")");
+	// NS_LOG_INFO ("Configuring probeServers (probeServers:" << probeServers.GetN() << ")");
 	// Setting servers
 	p2p.SetDeviceAttribute ("DataRate", DataRateValue (DataRate (LEAF_SERVER_CAPACITY)));
 	p2p.SetChannelAttribute ("Delay", TimeValue(LINK_LATENCY));
@@ -824,24 +837,30 @@ int main (int argc, char *argv[])
 
 	for (int i = 0; i < LEAF_COUNT; i++)
 	{
-		Ipv4Address network = ipv4.NewNetwork ();
-		leafNetworks[i] = network;
+		Ipv4Address network	= ipv4.NewNetwork ();
+		leafNetworks[i]		= network;
 
 		for (int j = 0; j < SERVER_COUNT; j++)
 		{
-			int serverIndex = i * SERVER_COUNT + j;
-			NodeContainer nodeContainer = NodeContainer (leaves.Get (i), servers.Get (serverIndex));
-			NetDeviceContainer netDeviceContainer = p2p.Install (nodeContainer);
+			int serverIndex							= i * SERVER_COUNT + j;
+			NodeContainer nodeContainer				= NodeContainer (leaves.Get (i), servers.Get (serverIndex));
+			NetDeviceContainer netDeviceContainer	= p2p.Install (nodeContainer);
 
 			if (transportProt.compare ("DcTcp") == 0)
 			{
-				// NS_LOG_INFO ("Install RED Queue for leaf: " << i << " and server: " << j);
-				QueueDiscContainer queueDisc =  tc.Install (netDeviceContainer);
-				// salvatorg
-				// Store the TxQueueDisc of every leaf to server 
-				QueueDiscLeavesToServers.Add(queueDisc.Get(0));
-				// Store the TxQueueDisc of every server to leaf 
-				QueueDiscServersToLeaves.Add(queueDisc.Get(1));
+				// If ProbingEnable then we have a dedicated server for probes, the last one in each ToR
+				if ( !(ProbingEnable && j==SERVER_COUNT-1) )
+				// 	NS_LOG_INFO ("Excluding Server: " << j << " from the queueDisc logs");
+				// else
+				{
+					// NS_LOG_INFO ("Install RED Queue for leaf: " << i << " and server: " << j);
+					QueueDiscContainer queueDisc =  tc.Install (netDeviceContainer);
+					// salvatorg
+					// Store the TxQueueDisc of every leaf to server 
+					QueueDiscLeavesToServers.Add(queueDisc.Get(0));
+					// Store the TxQueueDisc of every server to leaf 
+					QueueDiscServersToLeaves.Add(queueDisc.Get(1));
+				}
 			}
 
 			// Assign IP addresses to both end points
@@ -849,10 +868,11 @@ int main (int argc, char *argv[])
 
 			NS_LOG_INFO ("Leaf - " << i << " (ID:" << (leaves.Get(i))->GetId() << ") is connected to Server - " << j << " (ID:" << (servers.Get(serverIndex))->GetId() << ") with address " << interfaceContainer.GetAddress(0) << " <-> " << interfaceContainer.GetAddress (1) << " with port " << netDeviceContainer.Get (0)->GetIfIndex () << " <-> " << netDeviceContainer.Get (1)->GetIfIndex ());
 
-			// Store the each server address
+			// Store each server address
 			serverAddresses [serverIndex] = interfaceContainer.GetAddress (1);
 			if (transportProt.compare ("Tcp") == 0)
 			{
+				// Remove any queueDisc in case of TCP
 				tc.Uninstall (netDeviceContainer);
 			}
 
@@ -860,6 +880,7 @@ int main (int argc, char *argv[])
 			{
 				for (int k = 0; k < SERVER_COUNT * LEAF_COUNT; k++)
 				{
+					// Map the address of the server to the particular ToR that is under
 					Ptr<Ipv4Clove> clove = servers.Get (k)->GetObject<Ipv4Clove> ();
 					clove->AddAddressWithTor (interfaceContainer.GetAddress (1), i);
 				}
@@ -912,9 +933,11 @@ int main (int argc, char *argv[])
 				{
 					// salvatorg
 					// create a list with all the leaf-spine queues
-					QueueDiscContainer queueDisc = tc.Install (netDeviceContainer);
-					SpineQueueDiscs[j][i] = queueDisc.Get(1);
+					QueueDiscContainer queueDisc	= tc.Install (netDeviceContainer);
+					SpineQueueDiscs[j][i]			= queueDisc.Get(1);
 					queueDiscs.Add(queueDisc);
+					QueueDiscLeavesToSpines.Add(queueDisc.Get(0));
+					QueueDiscSpinesToLeaves.Add(queueDisc.Get(1));
 				}
 				Ipv4InterfaceContainer ipv4InterfaceContainer = ipv4.Assign (netDeviceContainer);
 				// NS_LOG_INFO ("Leaf - " << i << " is connected to Spine - " << j << " with address "
@@ -984,10 +1007,10 @@ int main (int argc, char *argv[])
 				int serverIndex = i * SERVER_COUNT + j;
 				for (int k = 0; k < SPINE_COUNT; k++)
 				{
-					int path = 0;
-					int pathBase = 1;
-					path += leafToSpinePath[std::make_pair (i, k)] * pathBase;
-					pathBase *= 100;
+					int path	= 0;
+					int pathBase= 1;
+					path		+= leafToSpinePath[std::make_pair (i, k)] * pathBase;
+					pathBase	*= 100;
 					for (int l = 0; l < LEAF_COUNT; l++)
 					{
 						if (i == l)
@@ -1013,34 +1036,34 @@ int main (int argc, char *argv[])
 		// clove->AddAvailPath (1, 202);
 
 
-
+		// salvatorg
+		// Set up the probe servers
 		if (ProbingEnable)
 		{
-		NS_LOG_INFO ("Configuring Probing");
+			NS_LOG_INFO ("Configuring Probing");
 			// Install tha handlers for the probes in each server, Recv()/Send() probe functions
-			// We just want to be sure to install the Recv() function on all the servers
+			// We just want to be sure to install the Recv() function in all the servers
 			for (int i = 0; i < SERVER_COUNT * LEAF_COUNT; i++)
 			{
-				Ptr<Ipv4Probing> probing = CreateObject<Ipv4Probing> ();
-				probings[i] = probing;
+				Ptr<Ipv4Probing> probing= CreateObject<Ipv4Probing> ();
+				probings[i]				= probing;
 				probing->SetNode (servers.Get (i));
 				probing->SetSourceAddress (serverAddresses[i]);
 				probing->Init ();
 			}
 
-			// The i th server under one leaf is used to probe each leaf by contacting the i th server under that leaf
-			// The ipv4-probing will return all the path to a particular leaf under which the i th server lives
-			// e.g. server 0 under leaf 0 probes server 0 under leaves 1-LEAF_COUNT
-			for (int probingServer = 0; probingServer < SERVER_COUNT * LEAF_COUNT; probingServer=SERVER_COUNT+probingServer)
+			// The last server in each ToR is a probing server (not traffic generated from this server)
+			for (int probingServer = SERVER_COUNT-1 ; probingServer < SERVER_COUNT * LEAF_COUNT ; probingServer=SERVER_COUNT+probingServer)
 			{
-				for (int serverBeingProbed = 0; serverBeingProbed < SERVER_COUNT * LEAF_COUNT ; serverBeingProbed++)
+				int probingLeaf	= probingServer / SERVER_COUNT;
+
+				for (int serverBeingProbed = 0 ; serverBeingProbed < SERVER_COUNT * LEAF_COUNT ; serverBeingProbed++)
 				{
 						int LeafBeingProbed	= serverBeingProbed / SERVER_COUNT;
-						int probingLeaf 	= probingServer / SERVER_COUNT;
-						// int serverBeingProbed = SERVER_COUNT * serverIndexUnderLeaf;
-
-						if (LeafBeingProbed == probingLeaf)
+						// Avoid to send probes from a ToR to the same ToR
+						if ( (LeafBeingProbed == probingLeaf) || ( (serverBeingProbed+1) % SERVER_COUNT == 0) )
 						{
+							NS_LOG_DEBUG ("SKIPING Server ["<< serverAddresses[probingServer] <<"] (ID:" << (servers.Get (probingServer))->GetId() << ") to Server [" << serverAddresses[serverBeingProbed] << "] (ID:" << (servers.Get (serverBeingProbed))->GetId() << ")");
 							continue;
 						}
 
@@ -1110,7 +1133,7 @@ int main (int argc, char *argv[])
 
 	for (int fromLeafId = 0; fromLeafId < LEAF_COUNT; fromLeafId ++)//LEAF_COUNT
 	{
-		 install_applications(fromLeafId, servers, requestRate, cdfTable, flowCount, totalFlowSize, SERVER_COUNT, LEAF_COUNT, START_TIME, END_TIME, FLOW_LAUNCH_END_TIME, applicationPauseThresh, applicationPauseTime);
+		 install_applications(fromLeafId, servers, requestRate, cdfTable, flowCount, totalFlowSize, SERVER_COUNT, LEAF_COUNT, START_TIME, END_TIME, FLOW_LAUNCH_END_TIME, applicationPauseThresh, applicationPauseTime, ProbingEnable);
 	}
 
 	// Manually add and launch applications
@@ -1159,8 +1182,8 @@ int main (int argc, char *argv[])
 	std::stringstream flowMonitorFilename;
 	std::stringstream linkMonitorFilename;
 
-	flowMonitorFilename << id << "-" << LEAF_COUNT << "x" << SPINE_COUNT << "-L" << load*100 << "-"  << transportProt << "-" << enum_to_string(runMode)<< "-";
-	linkMonitorFilename << id << "-" << LEAF_COUNT << "x" << SPINE_COUNT << "-L" << load*100 << "-"  << transportProt << "-" << enum_to_string(runMode)<< "-";
+	flowMonitorFilename << id << "-" << LEAF_COUNT << "x" << SPINE_COUNT << "-L" << load*100 << "-"  << transportProt << "-" << enum_to_string(runMode) << "-";
+	linkMonitorFilename << id << "-" << LEAF_COUNT << "x" << SPINE_COUNT << "-L" << load*100 << "-"  << transportProt << "-" << enum_to_string(runMode) << "-";
 
 
 	// if (runMode == ECMP)
@@ -1229,7 +1252,7 @@ int main (int argc, char *argv[])
 		// std::ofstream out (ProbeDelaysLog.str ().c_str (), std::ios::out|std::ios::app);
 
 		// Write the logs to file
-		AllQueuesLog << "AllQueuesLog.log";
+		AllQueuesLog << "AllQueuesUtil-" << LEAF_COUNT << "x" << SPINE_COUNT << "-L" << load*100 << "-" << enum_to_string(runMode) << ".QLog";
 		remove (AllQueuesLog.str ().c_str ());
 		Simulator::ScheduleNow (&CheckQueueDiscSize, Interval4QueuesCheck);
 	}
